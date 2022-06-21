@@ -36,20 +36,20 @@ Contains the specific instructions and `ansible` scripts for the NVidia Nano Nod
 
 ### Setup the extra drive
 - insert drive
-- should enumerate as /dev/sdb1
+- should enumerate as /dev/sda1
 - setup a SWAP 16GB
 - setup a rw for the `/` overlay
 - setup a the /media/plugin-data drive (the rest of the drive)
 
 **clear the current partition table, create GPT table**
   ```
-  fdisk --wipe always --wipe-partitions always /dev/sdb
+  fdisk --wipe always --wipe-partitions always /dev/sda
   g
   w
   ```
   **make the swap partition (16GB SWAP)**
   ```
-  fdisk --wipe always --wipe-partitions always /dev/sdb
+  fdisk --wipe always --wipe-partitions always /dev/sda
   n
   ""
   ""
@@ -61,7 +61,7 @@ Contains the specific instructions and `ansible` scripts for the NVidia Nano Nod
 
   **make the overlayfs (16GB)**
   ```
-  fdisk --wipe always --wipe-partitions always /dev/sdb
+  fdisk --wipe always --wipe-partitions always /dev/sda
   n
   ""
   ""
@@ -71,7 +71,7 @@ Contains the specific instructions and `ansible` scripts for the NVidia Nano Nod
   
   **make the plugin-data (* the rest of the space)**
   ```
-  fdisk --wipe always --wipe-partitions always /dev/sdb
+  fdisk --wipe always --wipe-partitions always /dev/sda
   n
   ""
   ""
@@ -82,20 +82,20 @@ Contains the specific instructions and `ansible` scripts for the NVidia Nano Nod
 **turn on the swap**
 format the swap
 ```
-  root@localhost:~# mkswap /dev/sdb1 -L ext-swap
+  root@localhost:~# mkswap /dev/sda1 -L ext-swap
 Setting up swapspace version 1, size = 16 GiB (17179865088 bytes)
 LABEL=ext-swap, UUID=6863907e-fe44-4d50-956b-cdc98490a059
 ```
 
 **put the swap in the startup partition file**
 ```
-echo "/dev/sdb1 swap swap defaults,nofail 0 0" >> /etc/fstab
+echo "/dev/sda1 swap swap defaults,nofail 0 0" >> /etc/fstab
 ```
 
 **setup the overlayfs partition**
 ```
-    mkfs.ext4 /dev/sdb2
-    e2label /dev/sdb2 system-data
+    mkfs.ext4 /dev/sda2
+    e2label /dev/sda2 system-data
 echo "${PLUGIN_DEVICE} ${NVME_PART_MOUNT_PLUGIN} ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2" >> /etc/fstab
 ```
 
@@ -103,9 +103,9 @@ echo "${PLUGIN_DEVICE} ${NVME_PART_MOUNT_PLUGIN} ext4 defaults,nofail,x-systemd.
 
 **set the default mount of /media/plugin-data in the /etc/fstab**
 ```
-    mkfs.ext4 /dev/sdb3
-    e2label /dev/sdb3 plugin-data
-    echo "/dev/sdb3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2" >> /etc/fstab
+    mkfs.ext4 /dev/sda3
+    e2label /dev/sda3 plugin-data
+    echo "/dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2" >> /etc/fstab
 ```
 
 **Configure docker to use external media**
