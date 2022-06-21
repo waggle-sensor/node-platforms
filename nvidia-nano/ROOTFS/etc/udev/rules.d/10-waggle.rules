@@ -4,4 +4,4 @@ KERNEL=="eth*", ATTR{address}=="48:b0:2d:*", NAME="wan0"
 
 ## LAN configuration
 # TODO: change the below mac address filter for the actual one (probably: 00:e0:4c)
-KERNEL=="eth*", ATTR{address}=="92:1d:d4:*", NAME="lan0"
+KERNEL=="eth*", ATTR{address}=="70:88:6b:*", NAME="lan0"
