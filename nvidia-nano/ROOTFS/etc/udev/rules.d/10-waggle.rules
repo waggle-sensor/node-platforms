@@ -1,0 +1,3 @@
+## WAN configuration
+# all: find the Nvidia native ethernet interface, assign to WAN
+KERNEL=="eth*", ATTR{address}=="48:b0:2d:*", NAME="wan0"
