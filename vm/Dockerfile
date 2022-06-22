@@ -22,7 +22,10 @@ WORKDIR /ansible
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
-RUN mkdir -p /etc/waggle && echo TEST-minimal > /etc/waggle/vsn
+ARG VSN=TEST-minimal
+ARG NODE_ID=0000000000000001
+
+RUN mkdir -p /etc/waggle && echo $VSN > /etc/waggle/vsn
 
 RUN ansible-playbook -i localhost, -c local ./waggle_os.yml \
     -e skip_registration_key=yes \
@@ -34,7 +37,7 @@ RUN ansible-playbook -i localhost, -c local ./waggle_os.yml \
 RUN ansible-playbook -i localhost, -c local ./waggle_config.yml \
     -e beekeeper_registration_host=bk-sshd \
     -e beekeeper_registration_port=2201 \
-    -e node_id=0000000000000001 \
+    -e node_id=$NODE_ID \
     -e check_k3s=no \
     -e copy_k8s_resource_files=no
     #-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
