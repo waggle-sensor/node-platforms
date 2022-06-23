@@ -25,9 +25,3 @@
 
 [plugins.cri.containerd.runtimes.runc.options]
   BinaryName = "nvidia-container-runtime"
-
-[plugins.cri.registry.mirrors]
-  [plugins.cri.registry.mirrors."docker.io"]
-    endpoint = ["http://10.31.81.1:5001"]
-  [plugins.cri.registry.mirrors."registry.sagecontinuum.org"]
-    endpoint = ["http://10.31.81.1:5002"]

@@ -9,6 +9,11 @@ Contains the specific instructions and `ansible` scripts for the NVidia Nano Nod
  - card reader
  - sdcard
 
+## configure camera
+
+on first login requires a password change from default (`admin` / `admin`)
+- set to `admin` / `why1notnano`
+
 ### Special Setup Instructions
 - the node can NOT have an IP on the ethernet in the 10.42.0.0 IP space as k3s internal network uses that subnet.  it breaks stuff.
 
@@ -124,8 +129,6 @@ service docker start
 /etc/udev/rules.d/10-waggle.rules in ROOTFS
 ```
 
-> note: TODO we need to change the above as it configures for `wan0` on the ethernet and we need that to be `lan0`
-
 **install k3s**
 ```bash
 apt-get update ; apt-get install curl
@@ -227,19 +230,83 @@ dpkg -i waggle-common-tools_1.0.0_all.deb
 k3s gpu access config
 see folder: ROOTFS/etc/waggle/k3s_config/
 
+**tests executed**
+- node-id file created using /etc/waggle/config.ini
+  ```bash
+  service waggle-nodeid status
+  ````
+- k3s service starts and the service override works
+  ```bash
+  service k3s status
+  systemctl cat k3s
+  ```
+- k3s starts and basic pods run
+  ```bash
+  kubectl get pod -A
+  kubectl get node
+
+  NAME                           STATUS   ROLES                  AGE   VERSION
+  000048b02d5bfe58.wd-nanocore   Ready    control-plane,master   19h   v1.20.2+k3s1
+  ```
+- dnsmasq starts and the service override works
+  ```bash
+  service dnsmasq status
+  systemctl cat dnsmasq.service
+  ```
+
+- run GPU access test (docker)
+```bash
+docker run -ti --rm --gpus all waggle/gpu-stress-test:latest
+
+Status: Downloaded newer image for waggle/gpu-stress-test:latest
+Traceback (most recent call last):
+  File "stress.py", line 3, in <module>
+    x = torch.linspace(0, 4, 16*1024**2).cuda()
+  File "/usr/local/lib/python3.6/dist-packages/torch/cuda/__init__.py", line 196, in _lazy_init
+    _check_driver()
+  File "/usr/local/lib/python3.6/dist-packages/torch/cuda/__init__.py", line 101, in _check_driver
+    http://www.nvidia.com/Download/index.aspx""")
+AssertionError:
+Found no NVIDIA driver on your system. Please check that you
+have an NVIDIA GPU and installed a driver from
+http://www.nvidia.com/Download/index.aspx
+```
+
+TODO: figure out why the nvidia GPU was not accessible
+
+- run GPU access test (k3s)
+```bash
+kubectl run gpu-test --image=waggle/gpu-stress-test:latest --attach=true
+
+# to see the pod creation status
+watch kubectl get pod
+```
+
+> note: you may see the error `error: timed out waiting for the condition`. that is okay. it just means it is taking a long time to create the container in `k3s`
+
+
+see the gpu frequeney
+```bash
+tegrastats
+```
+^ grep for `GR3D_FREQ`
+
+to test:
+- run gpu-test in k3s to see if we get gpu access or not
+
+**test k3s is working**
+```bash
+kubectl get node
+kubectl get pod -A
+```
+
+**configure the local dev docker registry**
+>note: skipping the sage and docker.io mirror registries as they just add a complexity we don't need
+
+
 setup the local docker registry mirrors (as the k3s config uses them)
 see file: ROOTFS/etc/systemd/system/waggle-registry-local.service
-see file: ROOTFS/etc/systemd/system/waggle-registry-mirror-docker.service
-see file: ROOTFS/etc/systemd/system/waggle-registry-mirror-sage.service
-see folder: ROOTFS/etc/waggle/docker_registry_config/
 see folder: /ROOTFS/etc/waggle/docker/certs/
-
-configure docker to use the local docker.io mirror registry
-```bash
-apt-get install jq
-jq '. += {"registry-mirrors": [ "http://10.31.81.1:5001" ]}' /etc/docker/daemon.json > /tmp/daemon.json
-mv /tmp/daemon.json /etc/docker/daemon.json
-```
 
 configure the local dev docker keys
 ```bash
@@ -260,8 +327,6 @@ done.
 
 make the directories for the docker registries
 ```bash
-mkdir -p /media/plugin-data/docker_registry/mirrors/docker
-mkdir -p /media/plugin-data/docker_registry/mirrors/sage
 mkdir -p /media/plugin-data/docker_registry/local
 ```
 
@@ -269,26 +334,35 @@ enable the docker registry services
 ```bash
 systemctl daemon-reload
 systemctl enable waggle-registry-local.service
-systemctl enable waggle-registry-mirror-docker.service
-systemctl enable waggle-registry-mirror-sage.service
 ```
+
+Tests to execute
+- docker registy starts
+```bash
+root@localhost:~# curl https://10.31.81.1:5000/v2/_catalog
+{"repositories":[]}
+```
+- ensure can push to local registry and pull from local registry
+```bash
+docker pull ubuntu:latest
+
+docker tag ubuntu:latest 10.31.81.1:5000/joe:latest
+
+curl https://10.31.81.1:5000/v2/_catalog
+{"repositories":[]}
+
+docker push 10.31.81.1:5000/joe:latest
+The push refers to repository [10.31.81.1:5000/joe]
+13e8c0db60e7: Pushed
+latest: digest: sha256:0f744430d9643a0ec647a4addcac14b1fbb11424be434165c15e2cc7269f70f8 size: 529
+
+curl https://10.31.81.1:5000/v2/_catalog
+{"repositories":["joe"]}
+```
+^ while doing the above `push` you should see logs in `docker logs -f local_registry`
 
 **LEFT OFF HERE**
 
-to test:
-- node-id file created using /etc/waggle/config.ini
-- k3s service starts and the service override works
-- k3s starts and basic pods run
-- dnsmasq starts and the service override works
-- run gpu-test in k3s to see if we get gpu access or not
-- docker registries start and are being populated with the mirror
-  - ensure can push to local registry and pull from local registry
-
-**test k3s is working**
-```bash
-kubectl get node
-kubectl get pod -A
-```
 
 **hostname configuration**
 
@@ -314,7 +388,9 @@ dpkg -i waggle-node-hostname_1.2.1_all.deb
 
 `nslookup`
 ```bash
-apt-get install dnsutils -y
+apt-get install -y \
+  dnsutils \
+  iotop
 ```
 
 # random tools to remove
@@ -327,8 +403,6 @@ apt-get purge isc-dhcp-server
 # TODO ITEMS
 
 ## currently working on
-- we need dnsmasq so that the camera gets an IP address on the lan port
-  - need to host the 10.31.81.1/24 network
 - configure the lan network rules
 - set the node's hostname (becomes the k3s node name)
 - k3s service override settings
@@ -352,7 +426,12 @@ apt-get purge isc-dhcp-server
   - python2.7 and python3.6 (click, pip, etc.)
 - add the motd for waggle
 - check service startup order (svg) to confirm its all good
-- test camera connects and gets an IP in the dnsmasq pool
+- remove the docker registries from attempting to use the Surya IP space in their startup, as the dev units will always want to use the real mirror
+- get microphone running and wes configued to set the nano core as the node running the audio-server
+- test the wifi and bring over the wifi configs for the modprobe (if needed)
+- the camera will have an IP in the range of 10.31.81.10 - 19. do we want to set the Amcrest camera to a static IP (i.e. 10.31.8.20 ) ?
+  - we also need to figure out how to connect the camera to pyWaggle / WES. we don't want to have to run the "camera provisioner"
+- we need the `ip_set` kernel modules maybe
 
 ## Optional / research / unknown
 - (optional) create /var/lib/nvpmodel/status file to set the default operating mode and fmode (fan mode) to `cool`
