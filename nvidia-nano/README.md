@@ -3,7 +3,7 @@
 Contains the specific instructions and `ansible` scripts for the NVidia Nano Node Platform.
 
 ## Hardware needed
- - nvidia nano
+ - nvidia jetson nano
  - power supply
    - barrel - set the jumper next to barrel connector to use barrel power (see SageEdu instructions)
  - card reader
