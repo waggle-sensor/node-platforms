@@ -3,22 +3,23 @@
 Contains the specific instructions and `ansible` scripts for the NVidia Nano Node Platform.
 
 ## Hardware needed
- - nvidia jetson nano
- - power supply
-   - barrel - set the jumper next to barrel connector to use barrel power (see SageEdu instructions)
- - card reader
- - sdcard
+ - [NVIDIA Jetson Nano](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-nano/)
+ - Either Micro-USB or DC power supply
+   - Barrel - set the jumper next to barrel connector to use barrel power (see SageEdu instructions)
+ - uSD memory cards
+ - SD card reader
+ - WiFi card or Ethernet cable for Router
 
 ## configure camera
 
-on first login requires a password change from default (`admin` / `admin`)
+On first login requires a password change from default (`admin` / `admin`)
 - set to `admin` / `why1notnano`
 
 ### Special Setup Instructions
 - the node can NOT have an IP on the ethernet in the 10.42.0.0 IP space as k3s internal network uses that subnet.  it breaks stuff.
 
 ## Bootstrap Steps
-1. Install [NVidia Nano OS version 4.6](https://developer.nvidia.com/embedded/jetpack-sdk-461)
+Install [NVidia Nano OS version 4.6](https://developer.nvidia.com/embedded/jetpack-sdk-461)
 
 
 ### During the headless install to get `root` SSH access
