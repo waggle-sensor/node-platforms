@@ -1,0 +1,147 @@
+
+- name: waggle_timezone
+  hosts: all
+  become: yes
+  #remote_user: root
+  vars:
+    timezone_internal: "none"
+
+  tasks:
+
+
+    - name: set timezone variable if defined
+      set_fact:
+        timezone_internal: "{{timezone}}"
+      when: timezone is defined
+
+    - name: set timezone
+      timezone:
+        name: "{{timezone_internal}}"
+      when: timezone_internal != "none"
+
+
+- name: beekeeper-config
+  import_playbook: deploy_beekeeper_config.yaml
+
+
+- name: waggle_config
+  hosts: all
+  become: yes
+
+  tasks:
+
+
+    #- name: Check if sage_registration exists
+    #  stat:
+    #    path: /etc/waggle/sage_registration
+    #  register: reg_key_file
+
+    #- name: copy test keys (only if registration key does not exist)
+    #  copy:
+    #    src: "test-keys/{{item}}"
+    #    dest: /etc/waggle/
+    #    owner: root
+    #    group: root
+    #    mode: '0600'
+    #  loop:
+    #    - key.pem
+    #    - key.pem-cert.pub
+    #    - pubkey.pem
+    #  when: not reg_key_file.stat.exists
+
+    #- name: Copy known_hosts (only if registration key does not exist)
+    #  copy:
+    #    src: test-keys/known_hosts
+    #    dest: /etc/ssh/ssh_known_hosts
+    #    owner: root
+    #    group: root
+    #    mode: '0644'
+    #  when: not reg_key_file.stat.exists
+
+    - name: node-id file
+      copy:
+        dest: "/etc/waggle/node-id"
+        content: |
+          {{node_id}}
+      when: node_id is defined
+
+
+
+    - name: config.ini (note that this file is created in the "os" playbook)
+      community.general.ini_file:
+        path: /etc/waggle/config.ini
+        section: "{{ item.section }}"
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        mode: '0600'
+      loop:
+         - { section: 'system', option: 'devmode', value: 'true' }
+         - { section: 'system', option: 'node-id-override', value: '{{node_id}}'  }
+
+    #- name: Pause for 1 second (waggle-nodeid reads too fast)
+    #  pause:
+    #    seconds: 1
+
+
+    - shell: cat "/etc/waggle/config.ini"
+      register: data
+
+    - debug: msg="the value of config.ini is {{data}}"
+
+    - name: Unmask waggle-nodeid.service
+      ansible.builtin.shell: |
+        if [ -e /etc/systemd/system/waggle-nodeid.service_disabled ] ; then
+          mv /etc/systemd/system/waggle-nodeid.service_disabled /etc/systemd/system/waggle-nodeid.service
+          systemctl daemon-reload
+          systemctl start waggle-nodeid.service
+        fi
+
+
+    # If this image was provisioned with vagrant, this service was masked. (To allow config of node_id)
+    #- name: Unmask waggle-nodeid.service
+    #  ansible.builtin.systemd:
+    #    name: waggle-nodeid.service
+    #    masked: no
+
+
+    #- name: Make sure k3s is running (this should happen automatically !?)
+    #  systemd:
+    #    state: started
+    #    name: k3s
+
+    # speed-up, otherwise have to wait up to 3 minutes
+    #- name: Restart sagebk-registration.service
+    #  systemd:
+    #    state: restarted
+    #    name: sagebk-registration.service
+
+    # speed-up, otherwise have to wait up to 3 minute
+    #- name: Restart sagebk-reverse-tunnel.service
+    #  systemd:
+    #    state: restarted
+    #    name: sagebk-reverse-tunnel.service
+
+
+    - name: Wait for nodes to be ready
+      shell: "kubectl get nodes"
+      register: nodes
+      until:
+        - '" Ready "  in nodes.stdout'
+      retries: 20
+      delay: 2
+      when: check_k3s != "no"
+
+    - name: Creates directory
+      file:
+        path: /opt/sage/kubernetes
+        state: directory
+
+    - name: Ansible copy file to remote server
+      copy:
+        # ansible expects files in subfolder "files" (which does not exist), but we can get outside using "../"
+        src: ../kubernetes
+        dest: /opt/sage/
+      when: copy_k8s_resource_files != "no"
+
+    # - name: load kubernetes resources
+    #   command: kubectl apply -k /opt/sage/kubernetes/
