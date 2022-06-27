@@ -18,7 +18,7 @@ on first login requires a password change from default (`admin` / `admin`)
 - the node can NOT have an IP on the ethernet in the 10.42.0.0 IP space as k3s internal network uses that subnet.  it breaks stuff.
 
 ## Bootstrap Steps
-1. Install [NVidia Nano OS version 4.6](https://developer.nvidia.com/embedded/jetpack-sdk-461)
+1. Install [JetPack version 4.4.1 for Jetson Nano](https://developer.nvidia.com/embedded/jetpack-sdk-441-archive) DO NOT download 2GB version!!
 
 
 ### During the headless install to get `root` SSH access
