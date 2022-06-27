@@ -25,7 +25,7 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: |
-            ${{ github.repository_owner	}}/${{ github.event.repository.name }}
+            ${{ secrets.DOCKER_ORG	}}/${{ github.event.repository.name }}
           tags: |
             type=ref,event=pr
             type=semver,pattern={{major}}
