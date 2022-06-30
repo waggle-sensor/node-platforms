@@ -2,6 +2,11 @@
 
 Contains the specific instructions and `ansible` scripts for the NVidia Nano Node Platform.
 
+## Table of Contents
+1. Hardware needed
+2. Bootstrap Steps
+
+
 ## Hardware needed
  - nvidia jetson nano
  - power supply
@@ -9,16 +14,37 @@ Contains the specific instructions and `ansible` scripts for the NVidia Nano Nod
  - card reader
  - sdcard
 
-## configure camera
-
-on first login requires a password change from default (`admin` / `admin`)
-- set to `admin` / `why1notnano`
-
-### Special Setup Instructions
-- the node can NOT have an IP on the ethernet in the 10.42.0.0 IP space as k3s internal network uses that subnet.  it breaks stuff.
+> note: The jetson nano can NOT have an IP on the ethernet in the 10.42.0.0 IP space as k3s internal network uses that subnet.  it breaks stuff.
 
 ## Bootstrap Steps
-1. Install [NVidia Nano OS version 4.6](https://developer.nvidia.com/embedded/jetpack-sdk-461)
+1. Install [NVidia Nano OS version 4.4.1](https://developer.nvidia.com/embedded/jetpack-sdk-441-archive) for Jetson Nano Developer Kit
+
+2. Follow the instructions on the <a href="https://developer.nvidia.com/embedded/learn/get-started-jetson-nano-devkit#write">
+Getting Started with Jetson Nano Developer Kit</a> website to write the image to the microSD card
+  
+    1. Make sure to follow the correct set of instructions corresponding to your operating system
+
+3. Insert the microSD card into the Nano
+    1. The microSD card slot is located on the underside of the Nano
+  
+4. Jumper the J48 Power Selector Header Pins  
+    1. Pins not jumpered:  
+  <img alt='Not Jumpered Image'  src='non-jumpered.jpeg'></img>
+  
+    2. Pins Jumpered:
+  <img alt='Jumpered Image'  src='jumpered.jpeg'></img>
+
+5. Connect an ethernet cable that is connected to the internet into the ethernet port. This is where the nano will get access to WAN (Wide Area Network ie internet).
+
+6. Connect your computer to the Nano via it's micro USB port
+  
+7. Follow the instructions on <a href="https://developer.nvidia.com/embedded/learn/get-started-jetson-nano-devkit#setup-headless">Nvidia's website</a> 
+to set up the Nano according to your operating system
+
+8. Once you are connected to the nano go through the initial set up
+  1. 
+
+
 
 
 ### During the headless install to get `root` SSH access
