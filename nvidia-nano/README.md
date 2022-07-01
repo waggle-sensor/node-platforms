@@ -5,16 +5,19 @@ Contains the specific instructions and `ansible` scripts for the NVidia Nano Nod
 ## Table of Contents
 1. Hardware needed
 2. Bootstrap Steps
+3. Enabling `root` SSH access
+4. Setup the Extra Drive
+5. Configure Docker to use External Media
 
 
 ## Hardware needed
  - nvidia jetson nano
  - power supply
-   - barrel - set the jumper next to barrel connector to use barrel power (see SageEdu instructions)
  - card reader
  - sdcard
+ - micro usb
 
-> note: The jetson nano can NOT have an IP on the ethernet in the 10.42.0.0 IP space as k3s internal network uses that subnet.  it breaks stuff.
+> Note: The jetson nano can NOT have an IP on the ethernet in the 10.42.0.0 IP space as k3s internal network uses that subnet.  it breaks stuff.
 
 ## Bootstrap Steps
 1. Install [NVidia Nano OS version 4.4.1](https://developer.nvidia.com/embedded/jetpack-sdk-441-archive) for Jetson Nano Developer Kit
@@ -26,6 +29,7 @@ Getting Started with Jetson Nano Developer Kit</a> website to write the image to
 
 3. Insert the microSD card into the Nano
     1. The microSD card slot is located on the underside of the Nano
+    >Dev Note: insert in image where the sd card is located
   
 4. Jumper the J48 Power Selector Header Pins  
     1. Pins not jumpered:  
@@ -34,110 +38,197 @@ Getting Started with Jetson Nano Developer Kit</a> website to write the image to
     2. Pins Jumpered:
   <img alt='Jumpered Image'  src='jumpered.jpeg'></img>
 
-5. Connect an ethernet cable that is connected to the internet into the ethernet port. This is where the nano will get access to WAN (Wide Area Network ie internet).
+5. Connect an ethernet cable that is connected to the internet into the port. This is where the nano will get access to WAN (Wide Area Network ie internet).
 
 6. Connect your computer to the Nano via it's micro USB port
   
 7. Follow the instructions on <a href="https://developer.nvidia.com/embedded/learn/get-started-jetson-nano-devkit#setup-headless">Nvidia's website</a> 
 to set up the Nano according to your operating system
+<img alt='welcome' src='welcome.jpeg'></img>
 
 8. Once you are connected to the nano go through the initial set up
-  1. 
+    1. Set username to `waggle` and passwd to `waggle`
+    > Dev note: come up with a better password later
 
+    2. Set partition size to `0` or leave blank
 
+    3. When you get to the Network Configuration Screen, select the `eth0` option
 
+    4. Set hostname to localhost for now
+        > Note: The hostname will change later to node id
+    
+    5. Use default nvpmodel (MAXN) (10W)
+    > Dev note: we may be able to set this with ansible later. There are only 2 modes. the maxn is mode 001
 
-### During the headless install to get `root` SSH access
-- user: `waggle`
-- passwd: `waggle` (come up with a better password later)
-- partiion size set to 0 (or max) (leave blank)
-- eth0 as primary
-- we will change hostname later, so just use localhost for now
-- use default nvpmodel (MAXN) (10W) - we may be able to set this with ansible later
-  - there are only 2 modes.  the maxn is mode 0001
-- wait for system reboot
-- serial back in, and setup ssh access for the `root` user
-  - get IP for eth0
-  - set root user password (`passwd`) - `waggle` for now
-  - enable root user ssh login
-    sed -i 's/^#\?PasswordAuthentication .*$/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
-    sed -i 's/^#\?PermitRootLogin .*$/PermitRootLogin yes/' /etc/ssh/sshd_config
-    service sshd restart
-- login via `ssh root@<ip>` with the `waggle` password
+## You should now be in the nano's command line!
 
-### Setup the extra drive
-- insert drive
-- should enumerate as /dev/sda1
-- setup a SWAP 16GB
-- setup a rw for the `/` overlay
-- setup a the /media/plugin-data drive (the rest of the drive)
+Now let's setup `root` SSH access
 
-**clear the current partition table, create GPT table**
-  ```bash
-  fdisk --wipe always --wipe-partitions always /dev/sda
-  g
-  w
-  ```
-  **make the swap partition (16GB SWAP)**
-  ```bash
-  fdisk --wipe always --wipe-partitions always /dev/sda
-  n
-  ""
-  ""
-  +16G
-  t
-  19
-  w
-  ```
+## Enabling `root` SSH access
 
-  **make the overlayfs (16GB)**
-  ```bash
-  fdisk --wipe always --wipe-partitions always /dev/sda
-  n
-  ""
-  ""
-  +16G
-  w
-  ```
-  
-  **make the plugin-data (* the rest of the space)**
-  ```bash
-  fdisk --wipe always --wipe-partitions always /dev/sda
-  n
-  ""
-  ""
-  ""
-  w
-```
+  1. Get IP for `eth0`
+      1. run command `ifconfig eth0`
+      
+          ```bash
+          eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+          inet 000.000.0.000  netmask 000.000.000.0  broadcast 000.000.0.000
+          inet6 fe80::4ab0:2dff:fe5b:fe63  prefixlen 64  scopeid 0x20<link>
+          inet6 0000:000:0000:0000:0000:0000:0000:0000  prefixlen 00  scopeid 0x0<global>
+          inet6 0000:000:0000:0000:0000:0000:0000:0000  prefixlen 00  scopeid 0x0<global>
+          inet6 0000:000:0000:0000:0000:0000:0000:0000  prefixlen 00  scopeid 0x0<global>
+          inet6 0000:000:0000:0000:0000:0000:0000:0000  prefixlen 00  scopeid 0x0<global>
+          inet6 0000:000:0000:0000:0000:0000:0000:0000  prefixlen 00  scopeid 0x0<global>
+          ether 00:00:00:00:00:00  txqueuelen 1000  (Ethernet)
+          RX packets 1371647  bytes 1819095948 (1.8 GB)
+          RX errors 0  dropped 0  overruns 0  frame 0
+          TX packets 916252  bytes 87050219 (87.0 MB)
+          TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+          device interrupt 151  base 0x5000
+          ```
 
-**turn on the swap**
-format the swap
-```bash
-  root@localhost:~# mkswap /dev/sda1 -L ext-swap
-Setting up swapspace version 1, size = 16 GiB (17179865088 bytes)
-LABEL=ext-swap, UUID=6863907e-fe44-4d50-956b-cdc98490a059
-```
+      2. The set of numbers next to inet is your ip address
+          ```bash
+          inet 000.000.0.000
+          ```
+  2. Run command `sudo su`
+      1. enter in your password ie `waggle`
 
-**put the swap in the startup partition file**
-```bash
-echo "/dev/sda1 swap swap defaults,nofail 0 0" >> /etc/fstab
-```
+  3. Set root user password
+      1. run comand `passwd root`
 
-**setup the overlayfs partition**
-```bash
-    mkfs.ext4 /dev/sda2
-    e2label /dev/sda2 system-data
-echo "${PLUGIN_DEVICE} ${NVME_PART_MOUNT_PLUGIN} ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2" >> /etc/fstab
-```
+      2. set password to `waggle`
+      > Dev note: come up with a better password later
 
-> NOTE we will actually enable the overlayfs at the very end
+  4. Enable root user ssh login
+      1. run command `vim /etc/ssh/sshd_config`
+          1. Go to the bottom of the file
+          2. Enter in `PermitRootLogin yes` and `PasswordAuthentication yes` (Make sure they are in seperate lines)
+          3. Save and exit the file
+      > Note: In vim to enter in insert mode press 'i'. To exit insert mode press 'esc'. To save and quit type in ':wq' and press enter when not in insert mode
 
-**set the default mount of /media/plugin-data in the /etc/fstab**
-```bash
-    mkfs.ext4 /dev/sda3
-    e2label /dev/sda3 plugin-data
-    echo "/dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2" >> /etc/fstab
-```
+  5. Open another terminal and SSH as root into the nano `ssh root@<ip>`
+
+## Setup the Extra Drive
+1. Insert 512GB samsung usb stick into the nano
+
+2. The drive should enumerate as `sda1`
+
+    1. run command `lsblk` to check
+
+3. Clear the current partition table and create GPT table
+
+      ```bash
+      fdisk --wipe always --wipe-partitions always /dev/sda
+      g
+      w
+      ```
+    1. run command `fdisk --wipe always --wipe-partitions always /dev/sda`
+    2. press 'g' and then enter
+    3. press 'w' and then enter
+
+4. Make the SWAP partition (16GB SWAP)
+
+    ```bash
+    fdisk --wipe always --wipe-partitions always /dev/sda
+    n
+    ""
+    ""
+    +16G
+    t
+    19
+    w
+    ```
+
+    1. run command `fdisk --wipe always --wipe-partitions always /dev/sda`
+    2. press 'n' and then enter
+    3. leave blank and press enter
+    4. leave blank and press enter
+    5. type in '+16G' and press enter
+    6. press 't' and press enter
+    7. type in '19' and press enter
+    8. press 'w' and press enter
+
+5. Make the overlayfs 16GB
+
+    ```bash
+    fdisk --wipe always --wipe-partitions always /dev/sda
+    n
+    ""
+    ""
+    +16G
+    w
+    ```
+
+    1. run command `fdisk --wipe always --wipe-partitions always /dev/sda`
+    2. press 'n' and then enter
+    3. leave blank and press enter
+    4. leave blank and press enter
+    5. type in '+16G' and press enter
+    6. press 'w' and press enter
+
+6. Make the plugin-data (the rest of the space)
+
+    ```bash
+      fdisk --wipe always --wipe-partitions always /dev/sda
+      n
+      ""
+      ""
+      ""
+      w
+    ```
+
+    1. run command `fdisk --wipe always --wipe-partitions always /dev/sda`
+    2. press 'n' and then enter
+    3. leave blank and press enter
+    4. leave blank and press enter
+    5. leave blank and press enter
+    6. press 'w' and press enter
+
+7. Turn on the swap
+
+    1. Run command `mkswap /dev/sda1 -L ext-swap`
+
+        ```bash
+          root@localhost:~ mkswap /dev/sda1 -L ext-swap
+        Setting up swapspace version 1, size = 16 GiB (17179865088 bytes)
+        LABEL=ext-swap, UUID=6863907e-fe44-4d50-956b-cdc98490a059
+        ```
+
+8. Put the swap in the startup partition file
+
+    1. Run command `echo "/dev/sda1 swap swap defaults,nofail 0 0" >> /etc/fstab`
+
+9. Setup the overlayfs partition
+
+    1. run command `mkfs.ext4 /dev/sda2`
+    2. run command `e2label /dev/sda2 system-data`
+    3. run command 
+        ```bash
+        echo "${PLUGIN_DEVICE} ${NVME_PART_MOUNT_PLUGIN} ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2" >> /etc/fstab`
+        ```
+> Note: We will actually enable the overlayfs at the very end
+
+10. Set the default mount of /media/plugin-data in the /etc/fstab
+
+    1. run command `mkfs.ext4 /dev/sda3`
+
+    2. run command `e2label /dev/sda3 plugin-data`
+
+    3. run command
+        ```bash
+        echo "/dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2" >> /etc/fstab
+        ```
+
+11. Reboot the nano by running command `reboot`
+
+12. SSH into the nano as root again
+
+13. run command `lsblk` to see the drive configured correctly
+> Dev Note: insert in the correct output here
+
+## Configure Docker to use External Media
+
+LEFT OF HERE IN DOCUMENTATION
 
 **Configure docker to use external media**
 
