@@ -35,7 +35,7 @@ Getting Started with Jetson Nano Developer Kit</a> website to write the image to
 
 3. Insert the microSD card into the Nano
     1. The microSD card slot is located on the underside of the Nano
-    >Dev Note: insert in image where the sd card is located
+    >Dev Note (TODO): insert in image where the sd card is located
   
 4. Jumper the J48 Power Selector Header Pins  
     1. Pins not jumpered:  
@@ -279,13 +279,29 @@ To generate RSA keys, on the command line, enter:  ```ssh-keygen -t rsa```
         KERNEL=="eth*", ATTR{address}=="48:b0:2d:*", NAME="wan0"
 
         ## LAN configuration
-        # TODO: change the below mac address filter for the actual one (probably: 00:e0:4c)
-        KERNEL=="eth*", ATTR{address}=="70:88:6b:*", NAME="lan0"
+        KERNEL=="eth*", ATTR{address}=="f8:e4:3b:*", NAME="lan0"
         ```
 
     2. Escape insert mode, save and quit file
 
 3. Reboot device to see eth0 change to wan0 
+
+## Install / Remove Tools
+
+1. Install helpful tools
+
+```bash
+apt-get update && apt-get install -y \
+dnsutils \
+nmap \
+iotop
+```
+
+2. Remove items we don't need or conflict
+
+```bash
+apt-get purge isc-dhcp-server
+```
 
 ## Install k3s
 
@@ -456,6 +472,8 @@ To generate RSA keys, on the command line, enter:  ```ssh-keygen -t rsa```
 
             rm /etc/waggle/bk_key.pem
             ```
+
+            > Note: this is a work-around that will fixed better later (TODO)
 
         4. Reboot the device, Hostname should change after that
 
@@ -1077,5 +1095,8 @@ To generate RSA keys, on the command line, enter:  ```ssh-keygen -t rsa```
   - check docker is running
   - check docker mirrors working
   - check internet connection
-
-
+- the `lsblk` is showing up as, why does it have the UUID in it?
+```
+├─sda2         8:2    1    16G  0 part /media/1aef5c37-a088-4343-9a55-530d68442109
+└─sda3         8:3    1 428.3G  0 part /media/df5990dc-414c-4aa4-975d-774bc8811a8a
+```
