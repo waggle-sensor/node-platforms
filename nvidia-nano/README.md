@@ -20,11 +20,8 @@ Contains the specific instructions and `ansible` scripts for the NVidia Nano Nod
 
 
 ## Hardware needed
- - nvidia jetson nano
- - power supply
- - card reader
- - sdcard
- - micro usb
+ - NVIDIA Jetson Nano, either Micro-USB or DC power supply, barrel to set the jumper next to barrel connector to use barrel power, uSD memory cards, SD card reader, etc.
+ - Sensors: camera, microphone, simple environmental sensors such as BME680.
 
 > Note: The jetson nano can NOT have an IP on the ethernet in the 10.42.0.0 IP space as k3s internal network uses that subnet.  it breaks stuff.
 
@@ -73,7 +70,7 @@ to set up the Nano according to your operating system
 
 Now let's setup `root` SSH access
 
-## Enabling `root` SSH access
+## Enabling `root` SSH access (Jetson Nano Host)
 
   1. Get IP for `eth0`
       1. run command `ifconfig eth0`
@@ -116,6 +113,29 @@ Now let's setup `root` SSH access
       > Note: In vim to enter in insert mode press 'i'. To exit insert mode press 'esc'. To save and quit type in ':wq' and press enter when not in insert mode
 
   5. Open another terminal and SSH as root into the nano `ssh root@<ip>`
+
+### Set up SSH public key authentication to connect to a remote system (client side)
+
+#### Getting a List of SSH Commands and Syntax
+```ssh```
+
+### Set up public key authentication using SSH on a Linux or macOS computer
+To generate RSA keys, on the command line, enter:  ```ssh-keygen -t rsa```
+
+### Use SFTP or SCP to copy the public key file (for example, ~/.ssh/id_rsa.pub) to your account on the remote system
+```scp ~/.ssh/id_rsa.pub waggle@IP-Address```
+
+### SSH Access
+```ssh waggle@<ip> e.g., 10.0.0.151```
+
+### SSH Access
+```ssh-keygen -R <ip> e.g., 10.0.0.151```
+
+### Install the same docker file from https://hub.docker.com/r/waggle/gpu-stress-test/tags
+```docker pull waggle/gpu-stress-test:1.0.1```
+
+### You won't see the any output on your current terminal. You can open another one.
+```sudo docker run -it --rm --runtime nvidia --network host waggle/gpu-stress-test:1.0.1 -m 2```
 
 ## Setup the Extra Drive
 1. Insert 512GB samsung usb stick into the nano
