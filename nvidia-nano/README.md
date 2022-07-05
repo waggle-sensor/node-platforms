@@ -252,37 +252,6 @@ To generate RSA keys, on the command line, enter:  ```ssh-keygen -t rsa```
 4.  run command `lsblk` to see the drive configured correctly
 > Dev Note: insert in the correct output here
 
-## Configure Docker to use External Media
-
-1. Stop docker by running command `service docker stop`
-> Note: Docker is already installed by the native L4T / Jetpack so we will use that
-
-2. Move docker by running command `mv /var/lib/docker /media/plugin-data/
-
-3. Create a symbolic link by running command `ln -s /media/plugin-data/docker/ /var/lib/docker`
-
-4. Start up docker by running command `service docker start`
-
-## Configure the Network Interface, Udev Rules
-
-1. Go into rules.d directory by running this command `cd /etc/udev/rules.d/`
-
-2. Create a file using vim by running this command `vim 10-waggle.rules`
-
-    1. Go into insert mode, and paste the following content
-        ```bash
-        ## WAN configuration
-        # all: find the Nvidia native ethernet interface, assign to WAN
-        KERNEL=="eth*", ATTR{address}=="48:b0:2d:*", NAME="wan0"
-
-        ## LAN configuration
-        KERNEL=="eth*", ATTR{address}=="f8:e4:3b:*", NAME="lan0"
-        ```
-
-    2. Escape insert mode, save and quit file
-
-3. Reboot device to see eth0 change to wan0 
-
 ## Install Helpful Tools
 
 1. Install helpful tools
@@ -329,6 +298,37 @@ scp ROOTFS/etc/update-motd.d/05-waggle <ip>:/etc/update-motd.d/05-waggle
 ```bash
 chmod +x /etc/update-motd.d/05-waggle
 ```
+
+## Configure the Network Interface, Udev Rules
+
+1. Go into rules.d directory by running this command `cd /etc/udev/rules.d/`
+
+2. Create a file using vim by running this command `vim 10-waggle.rules`
+
+    1. Go into insert mode, and paste the following content
+        ```bash
+        ## WAN configuration
+        # all: find the Nvidia native ethernet interface, assign to WAN
+        KERNEL=="eth*", ATTR{address}=="48:b0:2d:*", NAME="wan0"
+
+        ## LAN configuration
+        KERNEL=="eth*", ATTR{address}=="f8:e4:3b:*", NAME="lan0"
+        ```
+
+    2. Escape insert mode, save and quit file
+
+3. Reboot device to see eth0 change to wan0 
+
+## Configure Docker to use External Media
+
+1. Stop docker by running command `service docker stop`
+> Note: Docker is already installed by the native L4T / Jetpack so we will use that
+
+2. Move docker by running command `mv /var/lib/docker /media/plugin-data/
+
+3. Create a symbolic link by running command `ln -s /media/plugin-data/docker/ /var/lib/docker`
+
+4. Start up docker by running command `service docker start`
 
 ## Install k3s
 
