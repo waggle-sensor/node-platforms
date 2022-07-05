@@ -319,6 +319,23 @@ chmod +x /etc/update-motd.d/05-waggle
 
 3. Reboot device to see eth0 change to wan0 
 
+## Configure `journalctl` to save historical logs
+
+1. create the journal log folder
+```bash
+mkdir -p /var/log/journal
+```
+
+2. add the `journalctl` config
+
+```bash
+mkdir -p /etc/systemd/journald.conf.d/
+````
+
+```bash
+scp ROOTFS/etc/systemd/journald.conf.d/10-waggle-journald.conf <ip>:/etc/systemd/journald.conf.d/10-waggle-journald.conf
+```
+
 ## Configure Docker to use External Media
 
 1. Stop docker by running command `service docker stop`
@@ -1082,7 +1099,6 @@ chmod +x /etc/update-motd.d/05-waggle
 ## later
 - minimal Waggle config (node ID, VSN, kubernetes config) and try to connect to beekeeper for registration
 - waggle elevated sudo access to docker, k3s, etc. (sudeors file)
-- journal log config
 - resolved config
 - docker local registries
 - enable the overlayfs
