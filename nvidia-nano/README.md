@@ -231,13 +231,10 @@ To generate RSA keys, on the command line, enter:  ```ssh-keygen -t rsa```
 
     1. run command `mkfs.ext4 /dev/sda2`
     2. run command `e2label /dev/sda2 system-data`
-    3. run command 
-        ```bash
-        echo "${PLUGIN_DEVICE} ${NVME_PART_MOUNT_PLUGIN} ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2" >> /etc/fstab`
-        ```
-> Note: We will actually enable the overlayfs at the very end
 
-10. Set the default mount of /media/plugin-data in the /etc/fstab
+> Note: We will actually enable the overlayfs at the very end (TODO)
+
+1.  Set the default mount of /media/plugin-data in the /etc/fstab
 
     1. Run command `mkfs.ext4 /dev/sda3`
 
@@ -248,11 +245,11 @@ To generate RSA keys, on the command line, enter:  ```ssh-keygen -t rsa```
         echo "/dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2" >> /etc/fstab
         ```
 
-11. Reboot the nano by running command `reboot`
+2.  Reboot the nano by running command `reboot`
 
-12. SSH into the nano as root again
+3.  SSH into the nano as root again
 
-13. run command `lsblk` to see the drive configured correctly
+4.  run command `lsblk` to see the drive configured correctly
 > Dev Note: insert in the correct output here
 
 ## Configure Docker to use External Media
@@ -286,21 +283,51 @@ To generate RSA keys, on the command line, enter:  ```ssh-keygen -t rsa```
 
 3. Reboot device to see eth0 change to wan0 
 
-## Install / Remove Tools
+## Install Helpful Tools
 
 1. Install helpful tools
 
 ```bash
 apt-get update && apt-get install -y \
 dnsutils \
-nmap \
-iotop
+iotop \
+jq \
+nmap
 ```
 
-2. Remove items we don't need or conflict
+## Remove Uneeded Items
+
+1. Remove installs we don't need or conflict
 
 ```bash
 apt-get purge isc-dhcp-server
+```
+
+2. Disable `apt` upgrade services
+
+```bash
+systemctl disable apt-daily.service && systemctl disable apt-daily.timer
+systemctl disable apt-daily-upgrade.service && systemctl disable apt-daily-upgrade.timer
+```
+
+3. Disable the `motd` news updates
+
+```bash
+chmod -x /etc/update-motd.d/*
+echo 'ENABLED=0' > /etc/default/motd-news
+systemctl disable motd-news.service && systemctl disable motd-news.timer
+```
+
+## Add the WaggleOS MOTD
+
+1. Copy file `/ROOTFS/etc/update-motd.d/05-waggle` to system and give execute permissions
+
+```bash
+scp ROOTFS/etc/update-motd.d/05-waggle <ip>:/etc/update-motd.d/05-waggle
+```
+
+```bash
+chmod +x /etc/update-motd.d/05-waggle
 ```
 
 ## Install k3s
@@ -1043,22 +1070,14 @@ apt-get purge isc-dhcp-server
 
 
 
-
-
-
-
-
 # TODO ITEMS
 
 ## currently working on
-- configure the lan network rules
 - set the node's hostname (becomes the k3s node name)
-- k3s service override settings
 - k3s shutdown service to ensure shutdown doesnt leave files open on file system
 - internet share, to allow the camera to get internet access if it wants (and/or rpi)
 - test the camera gets an IP on the 10.31.81.1/24 network
 - set the default hostname to something like "pre-reg" or something like that
-- update the MOTD to point out the url to go for registration
 
 ## later
 - minimal Waggle config (node ID, VSN, kubernetes config) and try to connect to beekeeper for registration
@@ -1072,7 +1091,6 @@ apt-get purge isc-dhcp-server
 - list of apt-get install packages
   - probably want to split them into their own groups (dont install them all at the start, but instead when configure dnsmasq, install dnsmasq)
   - python2.7 and python3.6 (click, pip, etc.)
-- add the motd for waggle
 - check service startup order (svg) to confirm its all good
 - remove the docker registries from attempting to use the Surya IP space in their startup, as the dev units will always want to use the real mirror
 - get microphone running and wes configued to set the nano core as the node running the audio-server
@@ -1080,6 +1098,7 @@ apt-get purge isc-dhcp-server
 - the camera will have an IP in the range of 10.31.81.10 - 19. do we want to set the Amcrest camera to a static IP (i.e. 10.31.8.20 ) ?
   - we also need to figure out how to connect the camera to pyWaggle / WES. we don't want to have to run the "camera provisioner"
 - we need the `ip_set` kernel modules maybe
+- add version to `/etc/waggle_version_os`
 
 ## Optional / research / unknown
 - (optional) create /var/lib/nvpmodel/status file to set the default operating mode and fmode (fan mode) to `cool`
@@ -1095,8 +1114,11 @@ apt-get purge isc-dhcp-server
   - check docker is running
   - check docker mirrors working
   - check internet connection
+- update the MOTD to point out the url to go for registration
 - the `lsblk` is showing up as, why does it have the UUID in it?
-```
-├─sda2         8:2    1    16G  0 part /media/1aef5c37-a088-4343-9a55-530d68442109
-└─sda3         8:3    1 428.3G  0 part /media/df5990dc-414c-4aa4-975d-774bc8811a8a
-```
+  ```
+  ├─sda2         8:2    1    16G  0 part /media/1aef5c37-a088-4343-9a55-530d68442109
+  └─sda3         8:3    1 428.3G  0 part /media/df5990dc-414c-4aa4-975d-774bc8811a8a
+  ```
+  - auto-mount problem (see: `systemctl --failed`)
+  
