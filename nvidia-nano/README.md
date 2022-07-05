@@ -8,6 +8,15 @@ Contains the specific instructions and `ansible` scripts for the NVidia Nano Nod
 3. Enabling `root` SSH access
 4. Setup the Extra Drive
 5. Configure Docker to use External Media
+6. Configure the Network Interface, Udev Rules
+7. Install k3s
+8. Configure k3s to Use External Media
+9. Configure Network Manager to Not Manage the k3s Networks
+10. Set up k3s Shutdown Service
+11. k3s Service Startup Customizations
+12. k3s GPU access Config
+13. Test k3s and Docker's GPU Access
+14. Configure The Local Dev Docker Registry
 
 
 ## Hardware needed
@@ -210,11 +219,11 @@ Now let's setup `root` SSH access
 
 10. Set the default mount of /media/plugin-data in the /etc/fstab
 
-    1. run command `mkfs.ext4 /dev/sda3`
+    1. Run command `mkfs.ext4 /dev/sda3`
 
-    2. run command `e2label /dev/sda3 plugin-data`
+    2. Run command `e2label /dev/sda3 plugin-data`
 
-    3. run command
+    3. Run command:
         ```bash
         echo "/dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2" >> /etc/fstab
         ```
@@ -228,294 +237,778 @@ Now let's setup `root` SSH access
 
 ## Configure Docker to use External Media
 
-LEFT OF HERE IN DOCUMENTATION
+1. Stop docker by running command `service docker stop`
+> Note: Docker is already installed by the native L4T / Jetpack so we will use that
 
-**Configure docker to use external media**
+2. Move docker by running command `mv /var/lib/docker /media/plugin-data/
 
-```bash
-service docker stop
-mv /var/lib/docker /media/plugin-data/
-ln -s /media/plugin-data/docker/ /var/lib/docker
-service docker start
-```
+3. Create a symbolic link by running command `ln -s /media/plugin-data/docker/ /var/lib/docker`
 
-> note: docker is already installed by the native L4T / Jetson so we will use that
+4. Start up docker by running command `service docker start`
 
-**configure the network interface, udev rules**
-```bash
-/etc/udev/rules.d/10-waggle.rules in ROOTFS
-```
+## Configure the Network Interface, Udev Rules
 
-**install k3s**
-```bash
-apt-get update ; apt-get install curl
-curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.20.2+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_CLUSTER_SECRET=4tX0DUZ0uQknRtVUAKjt sh -
-```
+1. Go into rules.d directory by running this command `cd /etc/udev/rules.d/`
 
-**configure k3s to use the external media**
-```bash
-service k3s status
-● k3s.service - Lightweight Kubernetes
-   Loaded: loaded (/etc/systemd/system/k3s.service; disabled; vendor preset: enabled)
-   Active: inactive (dead)
+2. Create a file using vim by running this command `vim 10-waggle.rules`
+
+    1. Go into insert mode, and paste the following content
+        ```bash
+        ## WAN configuration
+        # all: find the Nvidia native ethernet interface, assign to WAN
+        KERNEL=="eth*", ATTR{address}=="48:b0:2d:*", NAME="wan0"
+
+        ## LAN configuration
+        # TODO: change the below mac address filter for the actual one (probably: 00:e0:4c)
+        KERNEL=="eth*", ATTR{address}=="70:88:6b:*", NAME="lan0"
+        ```
+
+    2. Escape insert mode, save and quit file
+
+3. Reboot device to see eth0 change to wan0 
+
+## Install k3s
+
+1. Install curl by running this command `apt-get install curl`
+
+2. Install K3s via curl by running this command:
+    ```bash
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.20.2+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_CLUSTER_SECRET=4tX0DUZ0uQknRtVUAKjt sh -
+    ```
+
+## Configure k3s to Use External Media
+
+1. Check the status of k3s by runnig this command `service k3s status`
+    1. Output should look like this:
+    ```bash
+    ● k3s.service - Lightweight Kubernetes
+    Loaded: loaded (/etc/systemd/system/k3s.service; disabled; vendor preset: enabled)
+    Active: inactive (dead)
      Docs: https://k3s.io
+    ```
+
+2. Run this command to save external media dir as a variable `NVMEMOUNT=/media/plugin-data`
+
+    1. Check if the variable was saved by running this command `ls ${NVMEMOUNT}`
+        ```bash
+        ls ${NVMEMOUNT}
+        docker  lost+found
+        ```
+
+3. Run the following commands to create the neccessary directories in the external media
+    ```bash
+    mkdir -p ${NVMEMOUNT}/k3s/etc/rancher
+    mkdir -p ${NVMEMOUNT}/k3s/kubelet
+    mkdir -p ${NVMEMOUNT}/k3s/rancher
+    ```
+
+4. Run the following commands to create symbolic links in the newly created directories
+    ```bash
+    ln -s ${NVMEMOUNT}/k3s/etc/rancher /etc/rancher
+    ln -s ${NVMEMOUNT}/k3s/kubelet /var/lib/kubelet
+    ln -s ${NVMEMOUNT}/k3s/rancher /var/lib/rancher
+    ```
+
+5. Enable k3s by running this command `systemctl enable k3s.service`
+    1. Output should look like this:
+        ```bash
+        Created symlink /etc/systemd/system/multi-user.target.wants/k3s.service → /etc/systemd/system/k3s.service.
+        ```
+
+## Configure Network Manager to Not Manage the k3s Networks
+
+1. Go to directory `/etc/NetworkManager/conf.d/`
+
+2. Create a file using vim by running this command `vim cni.conf`
+
+    1. Go into insert mode, and paste the following content
+        ```bash
+        [keyfile]
+        unmanaged-devices=interface-name:flannel.1;interface-name:veth*;interface-name:cni0
+        ```
+
+    2. Escape insert mode, save and quit file
+
+## Set up k3s Shutdown Service
+
+1. Go to directory `/etc/systemd/system/`
+
+2. Create a file using vim by running this command `vim waggle-k3s-shutdown.service`
+
+    1. Go into insert mode, and paste the following content
+        ```bash
+        [Unit]
+        Description=Gracefully k3s Shutdown
+        DefaultDependencies=no
+        Before=shutdown.target
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/k3s-killall.sh
+        TimeoutStartSec=0
+
+        [Install]
+        WantedBy=shutdown.target 
+        ```
+
+    2. Escape insert mode, save and quit file
+
+3. Enable service by running the following commands
+    ```bash
+    systemctl daemon-reload
+    systemctl enable waggle-k3s-shutdown
+    ```
+
+## k3s Service Startup Customizations
+
+1. Go to directory `/etc/`
+
+2. Create a directory running this command `mkdir waggle`
+
+3. Go into the waggle directory you just created
+
+4. Create a file using vim by running this command `vim config.ini`
+
+    1. Go into insert mode, and paste the following content
+        ```bash
+        [system]
+        name = wd-nanocore
+
+        [hardware]
+        lan-interface = lan0
+        wlan-interface = wan0
+        wifi-interface = wifi0
+        modem-interface = modem0
+
+        [network]
+        static-ip-nx = 10.31.81.1
+
+        [registration]
+        host = beekeeper.sagecontinuum.org
+        port = 49190
+        user = sage_registration
+        key = /etc/waggle/sage_registration
+        keycert = /etc/waggle/sage_registration-cert.pub
+
+        [reverse-tunnel]
+        host = beekeeper.sagecontinuum.org
+        port = 49190
+        key = /etc/waggle/bk_key.pem
+        pubkey = /etc/waggle/bk_pubkey.pem
+        ```
+
+    2. Escape insert mode, save and quit file
+
+5. Install python3-click by running this command `apt-get install python3-click`
+
+6. Travel to home dir by running this command `cd ~`
+
+7. Install the waggle-nodeid tool by running the follwing commands
+    ```bash
+    wget https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb
+
+    dpkg -i waggle-nodeid_1.0.7_all.deb
+    ```
+    > Note: This creates a waggle-nodeid service that should run on start-up and create the /etc/waggle/node-id file
+
+8. Reboot the device so the service creates the /etc/waggle/node-id file
+
+9. Execute this command to test if the service is working `service waggle-nodeid status`
+    ```bash
+    Dev Note: insert correct output here
+    ```
+    - If hostname does not resemble 'wd-nanocore-\<id\>' after the test was done then do the following:
+
+        1. Go to home directory `cd ~`
+
+        2. Install waggle-node-hostname by running the following commands:
+            ```bash
+            wget https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb
+
+            dpkg -i waggle-node-hostname_1.2.1_all.deb
+            ```
+
+        3. Run the following commands:
+            ```bash
+            touch /etc/waggle/bk_key.pem
+
+            /usr/bin/waggle_node_hostname.py -n /etc/waggle/node-id
+
+            rm /etc/waggle/bk_key.pem
+            ```
+
+        4. Reboot the device, Hostname should change after that
 
 
-NVMEMOUNT=/media/plugin-data
+10. Configure the lan0 network interface to bind to 10.31.81.1
 
-ls ${NVMEMOUNT}
-docker  lost+found
+    1. Go to directory `/etc/NetworkManager/system-connections/`
 
-mkdir -p ${NVMEMOUNT}/k3s/etc/rancher
-mkdir -p ${NVMEMOUNT}/k3s/kubelet
-mkdir -p ${NVMEMOUNT}/k3s/rancher
+    2. Create a file using vim by running this command `vim lan`
 
-NVME_PART_MOUNT_PLUGIN=/media/plugin-data
+        1. Go into insert mode, and paste the following content
+            ```bash
+            [connection]
+            id=lan
+            type=ethernet
+            autoconnect=true
+            interface-name=lan0
+            permissions=
 
-ln -s ${NVME_PART_MOUNT_PLUGIN}/k3s/etc/rancher /etc/rancher
-ln -s ${NVME_PART_MOUNT_PLUGIN}/k3s/kubelet /var/lib/kubelet
-ln -s ${NVME_PART_MOUNT_PLUGIN}/k3s/rancher /var/lib/rancher
+            [ethernet]
+            auto-negotiate=true
+            mac-address-blacklist=
 
-systemctl enable k3s.service
-Created symlink /etc/systemd/system/multi-user.target.wants/k3s.service → /etc/systemd/system/k3s.service.
-root@localhost:/usr/local/bin#
-```
+            [ipv4]
+            address1=10.31.81.1/24
+            dns-search=
+            method=manual
+            never-default=true
 
-**configure network manager to not manage the k3s networks**
-see file: /etc/NetworkManager/conf.d/cni.conf
+            [ipv6]
+            addr-gen-mode=stable-privacy
+            dns-search=
+            method=ignore
+            ```
 
-**k3s shutdown service**
-see file: nvidia-nano/ROOTFS/etc/systemd/system/waggle-k3s-shutdown.service
+        2. Escape insert mode, save and quit file
 
-enable service
-```bash
-systemctl daemon-reload
-systemctl enable waggle-k3s-shutdown
-```
+    3. Apply 0600 permission to lan file by running this command `chmod 0600 lan`
+  
+    4. Create a file using vim by running this command `vim wan`
 
-**k3s service start-up ordering requirements (after sda)**
+        1. Go into insert mode, and paste the following content
+            ```bash
+            [connection]
+            id=wan
+            type=ethernet
+            autoconnect=true
+            interface-name=wan0
+            permissions=
 
-- nothing to do specifically here.. i dont think...
+            [ethernet]
+            auto-negotiate=true
+            mac-address-blacklist=
 
-**k3s service startup customizations**
+            [ipv4]
+            dns-search=
+            method=auto
 
-this requires a bunch of things to be installed
+            [ipv6]
+            addr-gen-mode=stable-privacy
+            dns-search=
+            method=ignore
+            ```
 
-initial waggle config file
-see file: ROOTFS/etc/waggle/config.ini
+        2. Escape insert mode, save and quit file
 
-install the waggle-nodeid tool to generate the nodeid file used by other services
-```bash
-apt-get install python3-click
-wget https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb
-dpkg -i waggle-nodeid_1.0.7_all.deb
-```
-^ this creates a waggle-nodeid service that should run on start-up and create the /etc/waggle/node-id file
+    5. Apply 0600 permission to wan file by running this command `chmod 0600 wan`
 
-configure the lan0 network interface to bind to 10.31.81.1
-see file: ROOTFS/etc/NetworkManager/system-connections/lan
-also did the wan and wifi files here too
-see file: ROOTFS/etc/NetworkManager/system-connections/wan
-see file: ROOTFS/etc/NetworkManager/system-connections/wifi
+    6. Create a file using vim by running this command `vim wifi`
 
-> note: the above files must have `0600` permissions
+        1. Go into insert mode, and paste the following content
+            ```bash
+            [connection]
+            id=wifi
+            type=wifi
+            autoconnect=true
+            interface-name=wifi0
+            permissions=
 
-install and configure dnsmasq to create the device's internal 10.31.81.1/24 network (for use by kubernetes). enables agent k3s units (i.e. rpi) to be connected.
-```bash
-apt-get install dnsmasq
-```
+            [wifi]
+            mac-address-blacklist=
+            mode=infrastructure
+            #ssid=<access_point>
 
-dnsmasq config file and service override file
-see file: ROOTFS/etc/dnsmasq.d/10-waggle-base.conf
-see file: ROOTFS/etc/systemd/system/dnsmasq.service.d/override.conf
-```bash
-systemctl daemon-reload
-```
+            [wifi-security]
+            auth-alg=open
+            #key-mgmt=wpa-psk
+            #psk=<password>
 
-k3s service override
-see file: ROOTFS/etc/systemd/system/k3s.service.d/override.conf
-```bash
-systemctl daemon-reload
-```
+            [ipv4]
+            dns-search=
+            method=auto
 
-install waggle-commontools to read the config
-```bash
-wget https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb
-dpkg -i waggle-common-tools_1.0.0_all.deb
-```
+            [ipv6]
+            addr-gen-mode=stable-privacy
+            dns-search=
+            method=ignore
+            ```
 
-k3s gpu access config
-see folder: ROOTFS/etc/waggle/k3s_config/
+        2. Escape insert mode, save and quit file
 
-**tests executed**
-- node-id file created using /etc/waggle/config.ini
-  ```bash
-  service waggle-nodeid status
-  ````
-- k3s service starts and the service override works
-  ```bash
-  service k3s status
-  systemctl cat k3s
-  ```
-- k3s starts and basic pods run
-  ```bash
-  kubectl get pod -A
-  kubectl get node
+    7. Apply 0600 permission to wan file by running this command `chmod 0600 wifi`
 
-  NAME                           STATUS   ROLES                  AGE   VERSION
-  000048b02d5bfe58.wd-nanocore   Ready    control-plane,master   19h   v1.20.2+k3s1
-  ```
-- dnsmasq starts and the service override works
-  ```bash
-  service dnsmasq status
-  systemctl cat dnsmasq.service
-  ```
+11. Install and configure dnsmasq to create the device's internal 10.31.81.1/24 network (for use by kubernetes).
 
-- run GPU access test (docker)
-```bash
-docker run -ti --rm --gpus all waggle/gpu-stress-test:latest
+    1. Install dnsmasq by running this command `apt-get install dnsmasq`
 
-Status: Downloaded newer image for waggle/gpu-stress-test:latest
-Traceback (most recent call last):
-  File "stress.py", line 3, in <module>
-    x = torch.linspace(0, 4, 16*1024**2).cuda()
-  File "/usr/local/lib/python3.6/dist-packages/torch/cuda/__init__.py", line 196, in _lazy_init
-    _check_driver()
-  File "/usr/local/lib/python3.6/dist-packages/torch/cuda/__init__.py", line 101, in _check_driver
-    http://www.nvidia.com/Download/index.aspx""")
-AssertionError:
-Found no NVIDIA driver on your system. Please check that you
-have an NVIDIA GPU and installed a driver from
-http://www.nvidia.com/Download/index.aspx
-```
+    2. Go to directory `/etc/dnsmasq.d`
 
-TODO: figure out why the nvidia GPU was not accessible
+    3. Create a file using vim by running this command `vim 10-waggle-base.conf`
 
-- run GPU access test (k3s)
-```bash
-kubectl run gpu-test --image=waggle/gpu-stress-test:latest --attach=true
+        1. Go into insert mode, and paste the following content
+            ```bash
+            ## Basic global config
+            log-dhcp
+            #log-queries
 
-# to see the pod creation status
-watch kubectl get pod
-```
+            ## LAN DNS resolution / forwarding
+            listen-address=10.31.81.1
+            interface=lan0
+            bind-interfaces
 
-> note: you may see the error `error: timed out waiting for the condition`. that is okay. it just means it is taking a long time to create the container in `k3s`
+            ## Global DHCP Options
+            dhcp-authoritative
+            bogus-priv
+            # gateway
+            dhcp-option=3,10.31.81.1
+            # DNS server
+            dhcp-option=6,10.31.81.1
 
+            ## DHCP address assignment
+            dhcp-mac=set:rpi,DC:A6:32:*:*:*
+            dhcp-mac=set:rpi,3A:35:41:*:*:*
+            dhcp-mac=set:rpi,E4:5F:01:*:*:*
+            dhcp-mac=set:rpi,28:CD:C1:*:*:*
+            dhcp-range=tag:rpi,10.31.81.4,10.31.81.4,infinite
+            dhcp-mac=set:camera,9C:8E:CD:*:*:* # AMCREST camera
+            dhcp-mac=set:camera,E4:30:22:*:*:* # Hanwha camera
+            dhcp-mac=set:camera,00:03:C5:*:*:* # Mobotix camera
+            dhcp-range=tag:camera,10.31.81.10,10.31.81.19,infinite
+            # general DHCP pool
+            dhcp-range=10.31.81.50,10.31.81.254,10m
+            ```
 
-see the gpu frequeney
-```bash
-tegrastats
-```
-^ grep for `GR3D_FREQ`
+        2. Escape insert mode, save and quit file
 
-to test:
-- run gpu-test in k3s to see if we get gpu access or not
+    4. Go to directory `/etc/systemd/system`
 
-**test k3s is working**
-```bash
-kubectl get node
-kubectl get pod -A
-```
+    5. Create a directory by running this command `mkdir dnsmasq.service.d`
 
-**configure the local dev docker registry**
->note: skipping the sage and docker.io mirror registries as they just add a complexity we don't need
+    6. Go into this newly created directory `cd dnsmasq.service.d`
 
+    7. Create a file using vim by running this command `vim 10-waggle-base.conf`
 
-setup the local docker registry mirrors (as the k3s config uses them)
-see file: ROOTFS/etc/systemd/system/waggle-registry-local.service
-see folder: /ROOTFS/etc/waggle/docker/certs/
+        1. Go into insert mode, and paste the following content
+            ```bash
+            [Unit]
+            # start after the lan0 bound interface is up
+            Requires=network-online.target
+            After=network-online.target
 
-configure the local dev docker keys
-```bash
-chmod 600 /etc/waggle/docker/certs/domain.*
-mkdir -p /etc/docker/certs.d/10.31.81.1\:5000/
-cp /etc/waggle/docker/certs/domain.crt /etc/docker/certs.d/10.31.81.1\:5000/
-mkdir -p /usr/local/share/ca-certificates
-cp /etc/waggle/docker/certs/domain.crt /usr/local/share/ca-certificates/docker.crt
-update-ca-certificates
-```
-output:
-```bash
-Updating certificates in /etc/ssl/certs...
-1 added, 0 removed; done.
-Running hooks in /etc/ca-certificates/update.d...
-done.
-```
+            [Service]
+            Restart=always
+            RestartSec=30
+            ```
 
-make the directories for the docker registries
-```bash
-mkdir -p /media/plugin-data/docker_registry/local
-```
+        2. Escape insert mode, save and quit file
 
-enable the docker registry services
-```bash
-systemctl daemon-reload
-systemctl enable waggle-registry-local.service
-```
+    8. Reload daemon by running this command `systemctl daemon-reload`
 
-Tests to execute
-- docker registy starts
-```bash
-root@localhost:~# curl https://10.31.81.1:5000/v2/_catalog
-{"repositories":[]}
-```
-- ensure can push to local registry and pull from local registry
-```bash
-docker pull ubuntu:latest
+12. Set up k3s service override
 
-docker tag ubuntu:latest 10.31.81.1:5000/joe:latest
+    1. Go to directory `/etc/systemd/system`
 
-curl https://10.31.81.1:5000/v2/_catalog
-{"repositories":[]}
+    2. Create a directory by running this command `mkdir k3s.service.d`
 
-docker push 10.31.81.1:5000/joe:latest
-The push refers to repository [10.31.81.1:5000/joe]
-13e8c0db60e7: Pushed
-latest: digest: sha256:0f744430d9643a0ec647a4addcac14b1fbb11424be434165c15e2cc7269f70f8 size: 529
+    3. Go into the directory you just created `cd k3s.service.d`
 
-curl https://10.31.81.1:5000/v2/_catalog
-{"repositories":["joe"]}
-```
-^ while doing the above `push` you should see logs in `docker logs -f local_registry`
+    4. Create a file using vim by running this command `vim override.conf`
 
-**LEFT OFF HERE**
+        1. Go into insert mode, and paste the following content
+            ```bash
+            [Unit]
+            After=waggle-nodeid.service
+            Wants=waggle-nodeid.service
+            # desire to start after dnsmasq creates the lan IP
+            After=dnsmasq.service
+            Wants=dnsmasq.service
+
+            [Service]
+            # Fail service if Node ID file does not exist
+            ExecStartPre=/usr/bin/test -e /etc/waggle/node-id
+            ExecStartPre=/usr/bin/nmcli conn up lan
+            ExecStartPre=/etc/waggle/k3s_config/pre-run.sh
+            ExecStart=
+            ExecStart=/bin/bash -ce "/usr/local/bin/k3s server \
+              --node-name $(cat /etc/waggle/node-id).$(waggle-get-config -s system -k name) \
+              --disable=traefik \
+              --bind-address $(waggle-get-config -s network -k static-ip-nx) \
+              --node-ip $(waggle-get-config -s network -k static-ip-nx) \
+              --advertise-address $(waggle-get-config -s network -k static-ip-nx) \
+              --flannel-iface $(waggle-get-config -s hardware -k lan-interface) \
+              --resolv-conf /etc/waggle/k3s_config/resolv.conf \
+            " 
+            ```
+
+        2. Escape insert mode, save and quit file
+    
+    5. Reload daemon by running this command `systemctl daemon-reload`
+
+13. Install waggle-commontools to read the config
+
+    1. Travel to your home directory by running this command `cd ~`
+
+    2. Install waggle-commontools by running the following commands:
+        ```bash
+        wget https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb
+
+        dpkg -i waggle-common-tools_1.0.0_all.deb
+        ```
+
+## k3s GPU access Config
+
+1. Go to directory `/etc/waggle/`
+
+2. Create a new directory by running this command `mkdir k3s_config`
+
+3. Go into the directory you just created `cd k3s_config`
+
+4. Create a file using vim by running this command `vim config.toml.tmpl`
+
+    1. Go into insert mode, and paste the following content
+        ```bash
+        [plugins.opt]
+          path = "/var/lib/rancher/k3s/agent/containerd"
 
 
-**hostname configuration**
+        [plugins.cri]
+          stream_server_address = "127.0.0.1"
+          stream_server_port = "10010"
+          enable_selinux = false
+          sandbox_image = "rancher/pause:3.1"
 
-```bash
-wget https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb
-dpkg -i waggle-node-hostname_1.2.1_all.deb
-```
 
-> NOTE: this is currently not working cause it relies on registration to be finished first
-> ```bash
-> Jun 21 18:14:36 localhost systemd[1]: Starting Waggle Hostname Service...
-> Jun 21 18:14:36 localhost waggle_node_hostname.py[10208]: Waggle set hostname [node ID file: /etc/waggle/node-id | defer: True]
-> Jun 21 18:14:36 localhost waggle_node_hostname.py[10208]: Registration key [/etc/waggle/bk_key.pem] missing, will NOT set hostname
-> Jun 21 18:14:36 localhost systemd[1]: Started Waggle Hostname Service.
-> ```
+        [plugins.cri.containerd]
+          disable_snapshot_annotations = true
+          snapshotter = "overlayfs"
 
-# configured to run WES
 
--- set the nodes VSN
--- other stuff.... still figuring out what all of this is
+        [plugins.cri.cni]
+          bin_dir = "{{ .NodeConfig.AgentConfig.CNIBinDir }}"
+          conf_dir = "{{ .NodeConfig.AgentConfig.CNIConfDir }}"
 
-# random tool installation
 
-`nslookup`
-```bash
-apt-get install -y \
-  dnsutils \
-  iotop
-```
+        [plugins.cri.containerd.runtimes.runc]
+          runtime_type = "io.containerd.runc.v2"
 
-# random tools to remove
 
-`dhcpd` - we don't need this as we are not a dhcp server and we are using `dnsmasq` for this
-```bash
-apt-get purge isc-dhcp-server
-```
+        [plugins.cri.containerd.runtimes.runc.options]
+          BinaryName = "nvidia-container-runtime" 
+        ```
+
+    2. Escape insert mode, save and quit file
+
+5. Create a file using vim by running this command `vim pre-run.sh`
+
+    1. Go into insert mode, and paste the following content
+        ```bash
+        #!/bin/bash -e
+
+        # Script to be run before every execution of the K3s server
+
+        CONFIG_DEST=/var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl
+        CONFIG_SRC=/etc/waggle/k3s_config/config.toml.tmpl
+
+        # ensure the destination path exists
+        mkdir -p $(dirname $CONFIG_DEST)
+
+        cp $CONFIG_SRC $CONFIG_DEST
+        ```
+
+    2. Escape insert mode, save and quit file
+
+6. Give execution permission to pre-run.sh by running this command `chmod +x pre-run.sh`
+
+7. Create a file using vim by running this command `vim resolv.conf`
+
+    1. Go into insert mode, and paste the following content
+        ```bash
+        # Use local dnsmasq DNS (backed by systemd-resolve)
+        nameserver 10.31.81.1
+        ```
+
+    2. Escape insert mode, save and quit file
+
+## Test k3s and Docker's GPU Access
+
+1. Test k3s service override by running the following commands:
+    ```bash
+    service k3s status
+    systemctl cat k3s
+    ```
+
+    - Make sure lan and wan are connected before testing k3s service
+        ```
+        wan0
+        u should have your uplink (to network switch) plugged into the nano ethernet port
+
+        lan0
+        u should have the ethernet dongle connected to a usb port
+        (this is what you connect the camera to)
+        ```
+    
+        - if this is not the case then you will get this error when running `service k3s status`:
+        ```bash
+        Process: 7538 ExecStartPre=/usr/bin/nmcli conn up lan (code=exited, status=4)
+        ```
+
+    - k3s service should start and the service override should work
+    >Dev Note: Insert correct Ouput here
+
+2. If `service k3s status` returns active then test k3s and run basic pod by running the following commands:
+    ```bash 
+    kubectl get pod -A
+    kubectl get node
+    ```
+    - The output should look like this:
+        ```bash
+        NAME                           STATUS   ROLES                  AGE   VERSION
+        000048b02d5bfe58.wd-nanocore   Ready    control-plane,master   19h   v1.20.2+k3s1
+        ```
+3. Test dnsmasq by running the following commands:
+    ```bash
+    service dnsmasq status
+    systemctl cat dnsmasq.service
+    ```
+    >Dev Note: insert the correct output here
+
+4. Test docker's GPU access by running this command `docker run -ti --rm --gpus all waggle/gpu-stress-test:latest`
+
+    - To see if the gpu is being used check the gpu frequency (GR3D_FREQ) by running this command `tegrastats` in a seperate terminal
+
+5. If `service k3s status` returns active and `kubectl get node` returns an active node then test k3s' GPU access by running this command `kubectl run gpu-test --image=waggle/gpu-stress-test:latest --attach=true`
+    > Note: You may see the error `error: timed out waiting for the condition`. that is okay. it just means it is taking a long time to create the container in `k3s`
+
+    - It takes a while for the pod to create, to watch the pod creation status run this command `watch kubectl get pod`
+
+    - To see if the gpu is being used check the gpu frequency (GR3D_FREQ) by running this command `tegrastats` in a seperate terminal
+
+6. Once the pod stops running (~5 min) delete the pod by running this command `kubectl delete pod gpu-test &`
+
+## Configure The Local Dev Docker Registry
+> Dev Note: Skipping the sage and docker.io mirror registries as they just add a complexity we don't need
+
+1. Setup the local docker registry mirrors (as the k3s config uses them)
+
+    1. Go to directory `/etc/systemd/system/`
+
+    2. Create a file using vim by running this command `vim waggle-registry-local.service`
+
+        1. Go into insert mode, and paste the following content
+            ```bash
+            [Unit]
+            Description=Waggle Docker Registry (Local)
+            Requires=docker.service
+            After=docker.service
+
+            [Service]
+            Restart=always
+            RestartSec=30s
+            ExecStart=/usr/bin/docker run --rm -p 5000:5000 --name local_registry \
+                -v /media/plugin-data/docker_registry/local:/var/lib/registry \
+                -v /etc/waggle/docker/certs:/certs \
+                -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
+                -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
+                registry:2
+            ExecStop=/usr/bin/docker stop local_registry
+            ExecStopPost=-/usr/bin/docker container rm local_registry
+
+            [Install]
+            WantedBy=default.target
+            ```
+
+        2. Escape insert mode, save and quit file
+
+    3. Go to directory `/etc/waggle/`
+    
+    4. Create a directory by running this command `mkdir docker`
+
+    5. Travel into the newly created directory `cd docker`
+
+    6. Create a directory by running this command `mkdir certs`
+
+    7. Travel into the newly created directory `cd certs`
+
+    8. Create a file using vim by running this command `vim domain.crt`
+
+        1. Go into insert mode, and paste the following content
+            ```bash
+            -----BEGIN CERTIFICATE-----
+            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
+            -----END CERTIFICATE----- 
+            ```
+
+        2. Escape insert mode, save and quit file
+
+    9. Create a file using vim by running this command `vim domain.key`
+
+        1. Go into insert mode, and paste the following content
+            ```bash
+            -----BEGIN PRIVATE KEY-----
+            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
+            dNwDizqw0ZcIa06csX3gKiTtCsooW98=
+            -----END PRIVATE KEY-----
+            ```
+
+        2. Escape insert mode, save and quit file
+
+2. Configure the local dev docker keys
+    
+    1. Go to home directory `cd ~` and run the following commands:
+        ```bash
+        chmod 600 /etc/waggle/docker/certs/domain.*
+
+        mkdir -p /etc/docker/certs.d/10.31.81.1\:5000/
+
+        cp /etc/waggle/docker/certs/domain.crt /etc/docker/certs.d/10.31.81.1\:5000/
+
+        mkdir -p /usr/local/share/ca-certificates
+
+        cp /etc/waggle/docker/certs/domain.crt /usr/local/share/ca-certificates/docker.crt
+
+        update-ca-certificates
+        ```
+
+    2. After running `update-ca-certificates` the ouput should look like the following:
+        ```bash
+        Updating certificates in /etc/ssl/certs...
+        1 added, 0 removed; done.
+        Running hooks in /etc/ca-certificates/update.d...
+        done.
+        ```
+3. Make the directories for the docker registries `mkdir -p /media/plugin-data/docker_registry/local`
+
+4. Enable the docker registry services by running the following commands:
+    ```bash
+    systemctl daemon-reload
+    systemctl enable waggle-registry-local.service
+    ```
+
+5. To test the local dev docker registry run the following commands:
+    ```bash
+    curl https://10.31.81.1:5000/v2/_catalog
+    ```
+    - Output:
+    ```bash
+    {"repositories":[]}
+    ```
+
+6. Ensure you can pull from local registry by running the following commands:
+    ```bash
+    docker pull ubuntu:latest
+
+    docker tag ubuntu:latest 10.31.81.1:5000/joe:latest
+
+    curl https://10.31.81.1:5000/v2/_catalog
+    ```
+    - Output
+    ```bash
+    {"repositories":[]}
+    ```
+
+7. Ensure you can push to local registry by running this command:
+    ```bash
+    docker push 10.31.81.1:5000/joe:latest
+    ```
+    - Output
+    ```bash
+    13e8c0db60e7: Pushed
+    latest: digest: sha256:0f744430d9643a0ec647a4addcac14b1fbb11424be434165c15e2cc7269f70f8 size: 529
+    ```
+    > Note: while doing the above `push` you should see logs in `docker logs -f local_registry`
+
+8. You should now see a repository by running this command `curl https://10.31.81.1:5000/v2/_catalog`
+
+    - Output
+    ```bash
+    {"repositories":["joe"]}
+    ```
+
+
+
+
+
+
+
 
 # TODO ITEMS
 
@@ -564,3 +1057,5 @@ apt-get purge isc-dhcp-server
   - check docker is running
   - check docker mirrors working
   - check internet connection
+
+
