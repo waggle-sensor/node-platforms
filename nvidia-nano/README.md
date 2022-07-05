@@ -269,7 +269,10 @@ nmap
 1. Remove installs we don't need or conflict
 
 ```bash
-apt-get purge isc-dhcp-server
+apt-get purge -y \
+isc-dhcp-server -y \
+whoopsie
+apt-get autoremove -y
 ```
 
 2. Disable `apt` upgrade services
@@ -1090,11 +1093,11 @@ scp ROOTFS/etc/systemd/journald.conf.d/10-waggle-journald.conf <ip>:/etc/systemd
 # TODO ITEMS
 
 ## currently working on
-- set the node's hostname (becomes the k3s node name)
-- k3s shutdown service to ensure shutdown doesnt leave files open on file system
+- test the usb3.0 ethernet adapter with usb2 hub to be sure it works everytime
+  - no kernel errors, etc.
 - internet share, to allow the camera to get internet access if it wants (and/or rpi)
-- test the camera gets an IP on the 10.31.81.1/24 network
 - set the default hostname to something like "pre-reg" or something like that
+- set the node's hostname (becomes the k3s node name)
 
 ## later
 - minimal Waggle config (node ID, VSN, kubernetes config) and try to connect to beekeeper for registration
@@ -1115,6 +1118,7 @@ scp ROOTFS/etc/systemd/journald.conf.d/10-waggle-journald.conf <ip>:/etc/systemd
   - we also need to figure out how to connect the camera to pyWaggle / WES. we don't want to have to run the "camera provisioner"
 - we need the `ip_set` kernel modules maybe
 - add version to `/etc/waggle_version_os`
+- connectivity timeout on wan0 (have it use our tunnel connectivity in beekeper)
 
 ## Optional / research / unknown
 - (optional) create /var/lib/nvpmodel/status file to set the default operating mode and fmode (fan mode) to `cool`
