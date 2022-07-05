@@ -177,14 +177,14 @@ To generate RSA keys, on the command line, enter:  ```ssh-keygen -t rsa```
     7. type in '19' and press enter
     8. press 'w' and press enter
 
-5. Make the overlayfs 16GB
+5. Make the overlayfs 32GB
 
     ```bash
     fdisk --wipe always --wipe-partitions always /dev/sda
     n
     ""
     ""
-    +16G
+    +32G
     w
     ```
 
@@ -192,7 +192,7 @@ To generate RSA keys, on the command line, enter:  ```ssh-keygen -t rsa```
     2. press 'n' and then enter
     3. leave blank and press enter
     4. leave blank and press enter
-    5. type in '+16G' and press enter
+    5. type in '+32G' and press enter
     6. press 'w' and press enter
 
 6. Make the plugin-data (the rest of the space)
