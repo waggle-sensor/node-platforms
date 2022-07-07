@@ -1,1 +1,8 @@
-# Base ansible script for the Nvidia Nano Platform
+---
+- name: Hello world file
+  hosts: all
+  tasks:
+    - name: create a hello world file
+      copy:
+        content: Minji hello world
+        dest: /tmp/testfile.txt
