@@ -1115,27 +1115,19 @@ scp ROOTFS/etc/systemd/journald.conf.d/10-waggle-journald.conf <ip>:/etc/systemd
     {"repositories":["joe"]}
     ```
 
+## Add fallback DNS
 
+ROOTFS file: ROOTFS/etc/systemd/resolved.conf.d/10-waggle-resolved.conf
 
 # TODO ITEMS
 
 ## currently working on
-- set the default hostname to something like "pre-reg" or something like that
-- set the node's hostname (becomes the k3s node name)
 
 ## later
 - minimal Waggle config (node ID, VSN, kubernetes config) and try to connect to beekeeper for registration
-- waggle elevated sudo access to docker, k3s, etc. (sudeors file)
-- resolved config
-- docker local registries
 - enable the overlayfs
 - configure the wifi network rules
-- figure out the correct udev rule for the lan ethernet adapter (based on the mac) (https://www.amazon.com/uni-Ethernet-Internet-Compatible-Notebook/dp/B087QFQW6F)
-- list of apt-get install packages
-  - probably want to split them into their own groups (dont install them all at the start, but instead when configure dnsmasq, install dnsmasq)
-  - python2.7 and python3.6 (click, pip, etc.)
 - check service startup order (svg) to confirm its all good
-- remove the docker registries from attempting to use the Surya IP space in their startup, as the dev units will always want to use the real mirror
 - get microphone running and wes configued to set the nano core as the node running the audio-server
 - test the wifi and bring over the wifi configs for the modprobe (if needed)
 - the camera will have an IP in the range of 10.31.81.10 - 19. do we want to set the Amcrest camera to a static IP (i.e. 10.31.8.20 ) ?
@@ -1145,6 +1137,8 @@ scp ROOTFS/etc/systemd/journald.conf.d/10-waggle-journald.conf <ip>:/etc/systemd
 - connectivity timeout on wan0 (have it use our tunnel connectivity in beekeper)
 
 ## Optional / research / unknown
+- update the instructions for creating a "dummy" user on install and then adding the creation of the `waggle` user in the Ansible script so that it can be updated and easily versioned (instead of relying on the initial creation).  can tie this into sudoers access for `waggle` etc.
+  - this may not be necessary as the user can operate as `root` on the node, and we should encourage that.
 - (optional) create /var/lib/nvpmodel/status file to set the default operating mode and fmode (fan mode) to `cool`
   - it seems that `cool` is not allowed.  so need to figure out what fan modes ARE supported, if any
 - figure out if we want to allow `root` user to be able to login with ssh with password or not??
@@ -1159,6 +1153,11 @@ scp ROOTFS/etc/systemd/journald.conf.d/10-waggle-journald.conf <ip>:/etc/systemd
   - check docker mirrors working
   - check internet connection
 - update the MOTD to point out the url to go for registration
+- add support for RPI PxE booting, to allow for an easy downstream "agent"
+  - this also requires the fix to allow the rpi to use the local docker registry on the core (TBD)
+- add a Ansible script for configuring the Nano to operate as an "agent" instead of a "core"
+  - this includes the required ssh key access to be able to ssh to the agents from the core (for admin stuff)
+  - this includes the local docker registry access
 - the `lsblk` is showing up as, why does it have the UUID in it?
   ```
   ├─sda2         8:2    1    16G  0 part /media/1aef5c37-a088-4343-9a55-530d68442109
