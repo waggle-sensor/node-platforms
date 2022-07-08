@@ -25,6 +25,12 @@ Contains the specific instructions and `ansible` scripts for the NVidia Nano Nod
 
 > Note: The jetson nano can NOT have an IP on the ethernet in the 10.42.0.0 IP space as k3s internal network uses that subnet.  it breaks stuff.
 
+### Connecting the hardware
+
+TODO: list the instructions on what other hardware needs to be connected at this time (to ensure the future `ansible` script will work)
+- 512GB USB drive
+- usb2.0 extension to usb <-> ethernet dongle
+
 ## Bootstrap Steps
 1. Install [NVidia Nano OS version 4.4.1](https://developer.nvidia.com/embedded/jetpack-sdk-441-archive) for Jetson Nano Developer Kit
 
@@ -1104,8 +1110,6 @@ scp ROOTFS/etc/systemd/journald.conf.d/10-waggle-journald.conf <ip>:/etc/systemd
 # TODO ITEMS
 
 ## currently working on
-- test the usb3.0 ethernet adapter with usb2 hub to be sure it works everytime
-  - no kernel errors, etc.
 - internet share, to allow the camera to get internet access if it wants (and/or rpi)
 - set the default hostname to something like "pre-reg" or something like that
 - set the node's hostname (becomes the k3s node name)
