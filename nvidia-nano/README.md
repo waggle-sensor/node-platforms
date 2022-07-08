@@ -1119,22 +1119,38 @@ scp ROOTFS/etc/systemd/journald.conf.d/10-waggle-journald.conf <ip>:/etc/systemd
 
 ROOTFS file: ROOTFS/etc/systemd/resolved.conf.d/10-waggle-resolved.conf
 
+## Add wifi dongle support
+
+ROOTFS file: ROOTFS/etc/udev/rules.d/10-waggle.rules
+ROOTFS file: ROOTFS/etc/modprobe.d/rtl8821cu.conf
+ROOTFS file: ROOTFS/etc/modprobe.d/rtl8822bu.conf
+
+> Note: the modprobe conf files above disable the auto-power management (which is unstable)
+
+### Add 'waggle' hotspot support
+
+ROOTFS file: ROOTFS/etc/NetworkManager/system-connections/wifi-waggle
+
+```bash
+chmod 600 /etc/NetworkManager/system-connections/*
+```
+
+> Note: the device will auto-connect to a `ssid: waggle` / `passwd: Why1Not@Waggle` network now
+
 # TODO ITEMS
 
 ## currently working on
+- we need the `ip_set` kernel modules maybe
+- connectivity timeout on wan0 (have it use our tunnel connectivity in beekeper)
 
 ## later
 - minimal Waggle config (node ID, VSN, kubernetes config) and try to connect to beekeeper for registration
 - enable the overlayfs
-- configure the wifi network rules
 - check service startup order (svg) to confirm its all good
 - get microphone running and wes configued to set the nano core as the node running the audio-server
-- test the wifi and bring over the wifi configs for the modprobe (if needed)
 - the camera will have an IP in the range of 10.31.81.10 - 19. do we want to set the Amcrest camera to a static IP (i.e. 10.31.8.20 ) ?
   - we also need to figure out how to connect the camera to pyWaggle / WES. we don't want to have to run the "camera provisioner"
-- we need the `ip_set` kernel modules maybe
 - add version to `/etc/waggle_version_os`
-- connectivity timeout on wan0 (have it use our tunnel connectivity in beekeper)
 
 ## Optional / research / unknown
 - update the instructions for creating a "dummy" user on install and then adding the creation of the `waggle` user in the Ansible script so that it can be updated and easily versioned (instead of relying on the initial creation).  can tie this into sudoers access for `waggle` etc.
