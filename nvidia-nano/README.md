@@ -1149,21 +1149,85 @@ echo 'net.ipv4.conf.all.rp_filter = 2' >> /etc/sysctl.conf
 
 > Note: this change ensures that default `ip route` that is used actually has an Internet connection
 
+## Set the node friendly ID (VSN)
+
+```bash
+# echo N001 > /etc/waggle/vsn
+```
+
+> Note: the above instructions hard-code a static VSN.  In the future we will want to generate a random VSN (NXXX where X is a [0-9A-Z]) (TODO)
+
+## Register node and establish connection to Beehive
+
+1. Install the registration and reverse tunnel services
+
+```bash
+wget https://github.com/waggle-sensor/waggle-bk-registration/releases/download/v2.2.2/waggle-bk-registration_2.2.2_all.deb
+wget https://github.com/waggle-sensor/waggle-bk-reverse-tunnel/releases/download/v2.3.2/waggle-bk-reverse-tunnel_2.3.2_all.deb
+dpkg -i waggle-bk-registration_2.2.2_all.deb
+dpkg -i waggle-bk-reverse-tunnel_2.3.2_all.deb
+```
+
+> note: we either need to reboot after the above steps or force start the services
+
+2. Copy the Beekeeper known hosts public CA
+
+ROOTFS: ROOTFS/etc/ssh/ssh_known_hosts
+
+```bash
+chmod 644 /etc/ssh/ssh_known_hosts
+```
+
+3. Copy registration private key
+
+ROOTFS file: ROOTFS/etc/waggle/sage_registration
+
+```bash
+chmod 600 /etc/waggle/sage_registration
+```
+
+> note: this file is not checked into the code at this time, need to triple-check its safe to do so. (TODO)
+
+3. Copy the registration certificate
+
+Obtain the regristration certificate from the "node registration portal" and copy to: `/etc/waggle/sage_registration-cert.pub`
+
+```bash
+chmod 600 /etc/waggle/sage_registration-cert.pub
+```
+
+> Note: for the initial test the "production" registration certificate was used, which not be what is used long term
+> Note: this will be the registration cert that is obtained from the "node registration portal"
+
+4. Enable admin reverse tunnel access
+
+ROOTFS: ROOTFS/root/.ssh/authorized_keys.prod
+
+```bash
+cat /root/.ssh/authorized_keys.prod >> /root/.ssh/authorized_keys
+```
+
+> note: the above file is _appended_ to the currently existing authorized_keys file, as the file was already created and has a key in it to enable the `ansible` ssh session
+
+> note: at this time an admin should be able to login to the nano via the reverse tunnel through the beekeeper administrative services
+
 
 # TODO ITEMS
 
 ## currently working on
-- we need the `ip_set` kernel modules maybe
+ - launch and get WES running on the node
 
 ## later
-- minimal Waggle config (node ID, VSN, kubernetes config) and try to connect to beekeeper for registration
 - enable the overlayfs
+- we need the `ip_set` kernel modules maybe
 - check service startup order (svg) to confirm its all good
 - get microphone running and wes configued to set the nano core as the node running the audio-server
 - the camera will have an IP in the range of 10.31.81.10 - 19. do we want to set the Amcrest camera to a static IP (i.e. 10.31.8.20 ) ?
   - we also need to figure out how to connect the camera to pyWaggle / WES. we don't want to have to run the "camera provisioner"
 - add version to `/etc/waggle_version_os`
 - install and have the Nano's use the wan-tunnel to route all Internet traffice through beekeeper
+- figure out how to generate a random VSN
+  - NXXX where X is a random value between [0-9A-Z]
 
 ## Optional / research / unknown
 - update the instructions for creating a "dummy" user on install and then adding the creation of the `waggle` user in the Ansible script so that it can be updated and easily versioned (instead of relying on the initial creation).  can tie this into sudoers access for `waggle` etc.
@@ -1175,6 +1239,8 @@ echo 'net.ipv4.conf.all.rp_filter = 2' >> /etc/sysctl.conf
 - remove `dhcpd` service from running (its not running on a WSN)
 - we _may_ not need the sage and docker.io mirror, as they just take up additional space and maybe take longer. there are no k3s agents to take advantage of the mirrors
   - plus this assumes a sagecontinuum.org ECR which we dont need to assume
+- remove the X server and other gui elements that take up a alot of space/resources
+  - this also includes extras that NVidia put in there (examples maybe?)
 - some basic unit test / sanity test / health script to ensure the device is healthy (see the waggle-sanity-check - for the students)
   - check lan IP 
   - check k3s is running
