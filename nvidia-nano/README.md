@@ -9,14 +9,15 @@ Contains the specific instructions and `ansible` scripts for the NVidia Nano Nod
 4. Setup the Extra Drive
 5. Configure Docker to use External Media
 6. Configure the Network Interface, Udev Rules
-7. Install k3s
-8. Configure k3s to Use External Media
-9. Configure Network Manager to Not Manage the k3s Networks
-10. Set up k3s Shutdown Service
-11. k3s Service Startup Customizations
-12. k3s GPU access Config
-13. Test k3s and Docker's GPU Access
-14. Configure The Local Dev Docker Registry
+7. Install the Internet sharing service
+8. Install k3s
+9. Configure k3s to Use External Media
+10. Configure Network Manager to Not Manage the k3s Networks
+11. Set up k3s Shutdown Service
+12. k3s Service Startup Customizations
+13. k3s GPU access Config
+14. Test k3s and Docker's GPU Access
+15. Configure The Local Dev Docker Registry
 
 
 ## Hardware needed
@@ -338,6 +339,15 @@ chmod +x /etc/update-motd.d/05-waggle
     2. Escape insert mode, save and quit file
 
 3. Reboot device to see eth0 change to wan0 
+
+## Install the Internet sharing service
+
+    ```bash
+    wget https://github.com/waggle-sensor/waggle-internet-share/releases/download/v1.4.1/waggle-internet-share_1.4.1_all.deb
+
+    dpkg -i waggle-internet-share_1.4.1_all.deb
+    ```
+    > Note: This creates a service that ensures that hardware on the 10.31.81.1 has Internet access (by sharing the Nano's Internet uplink)
 
 ## Configure `journalctl` to save historical logs
 
@@ -1110,7 +1120,6 @@ scp ROOTFS/etc/systemd/journald.conf.d/10-waggle-journald.conf <ip>:/etc/systemd
 # TODO ITEMS
 
 ## currently working on
-- internet share, to allow the camera to get internet access if it wants (and/or rpi)
 - set the default hostname to something like "pre-reg" or something like that
 - set the node's hostname (becomes the k3s node name)
 
