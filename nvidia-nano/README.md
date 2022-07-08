@@ -70,54 +70,6 @@ to set up the Nano according to your operating system
 
 Now let's setup `root` SSH access
 
-## Ansible Support
-
-TODO: this is installing `ansible` on the Nano which we probably don't actually need! (oops!). Tests doing the hello-world ansible without `ansible` installed on the nano to see if it still works
-
-```bash
-# python --version
-Python 3.6.9
-```
-
-> Note: python3 should be the default python
-
-```bash
-# apt-get update && apt-get install -y python3-pip
-# python3 -m pip -V
-pip 9.0.1 from /usr/lib/python3/dist-packages (python 3.6)
-```
-
-```bash
-# python -m pip install ansible
-# python -m pip show ansible
-Name: ansible
-Version: 4.10.0
-Summary: Radically simple IT automation
-Home-page: https://ansible.com/
-Author: Ansible, Inc.
-Author-email: info@ansible.com
-License: GPLv3+
-Location: /usr/local/lib/python3.6/dist-packages
-Requires: ansible-core
-
-# ansible --version
-[DEPRECATION WARNING]: Ansible will require Python 3.8 or newer on the controller starting with Ansible
- 2.12. Current version: 3.6.9 (default, Mar 15 2022, 13:55:28) [GCC 8.4.0]. This feature will be
-removed from ansible-core in version 2.12. Deprecation warnings can be disabled by setting
-deprecation_warnings=False in ansible.cfg.
-ansible [core 2.11.12]
-  config file = None
-  configured module search path = ['/root/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
-  ansible python module location = /usr/local/lib/python3.6/dist-packages/ansible
-  ansible collection location = /root/.ansible/collections:/usr/share/ansible/collections
-  executable location = /usr/local/bin/ansible
-  python version = 3.6.9 (default, Mar 15 2022, 13:55:28) [GCC 8.4.0]
-  jinja version = 3.0.3
-  libyaml = True
-```
-
-> Note: TODO figure out how to get `ansible --version` to work, not in path. going to try a full uninstall of ansible and re-install (without --user) to see if that fixes it
-
 ## Enabling `root` SSH access (Jetson Nano Host)
 
   1. Get IP for `eth0`
@@ -184,6 +136,16 @@ To generate RSA keys, on the command line, enter:  ```ssh-keygen -t rsa```
 
 ### You won't see the any output on your current terminal. You can open another one.
 ```sudo docker run -it --rm --runtime nvidia --network host waggle/gpu-stress-test:1.0.1 -m 2```
+
+## Ansible Provisioning
+
+### Host machine (your laptop) Ansible setup
+
+You will need to install `ansible` to the machine that you are using to `ssh` connect to the nano.
+
+TOOD: fill in steps for configuring your laptop to run Nano.  With a link to some options (brew and/or pip for mac).
+
+> Note: `ansible` is _not_ needed on the Nano in order to perform `ansible` provisioning.
 
 ## Setup the Extra Drive
 1. Insert 512GB samsung usb stick into the nano
