@@ -277,6 +277,7 @@ TOOD: fill in steps for configuring your laptop to run Nano.  With a link to som
 apt-get update && apt-get install -y \
 dnsutils \
 htop \
+iftop \
 iotop \
 jq \
 nmap
@@ -1137,11 +1138,22 @@ chmod 600 /etc/NetworkManager/system-connections/*
 
 > Note: the device will auto-connect to a `ssid: waggle` / `passwd: Why1Not@Waggle` network now
 
+## Enable NetworkManager Connectivity checks
+
+ROOTFS file: ROOTFS/etc/NetworkManager/conf.d/99-connectivity.conf
+
+```bash
+echo 'net.ipv4.conf.default.rp_filter = 2' >> /etc/sysctl.conf
+echo 'net.ipv4.conf.all.rp_filter = 2' >> /etc/sysctl.conf
+```
+
+> Note: this change ensures that default `ip route` that is used actually has an Internet connection
+
+
 # TODO ITEMS
 
 ## currently working on
 - we need the `ip_set` kernel modules maybe
-- connectivity timeout on wan0 (have it use our tunnel connectivity in beekeper)
 
 ## later
 - minimal Waggle config (node ID, VSN, kubernetes config) and try to connect to beekeeper for registration
@@ -1151,6 +1163,7 @@ chmod 600 /etc/NetworkManager/system-connections/*
 - the camera will have an IP in the range of 10.31.81.10 - 19. do we want to set the Amcrest camera to a static IP (i.e. 10.31.8.20 ) ?
   - we also need to figure out how to connect the camera to pyWaggle / WES. we don't want to have to run the "camera provisioner"
 - add version to `/etc/waggle_version_os`
+- install and have the Nano's use the wan-tunnel to route all Internet traffice through beekeeper
 
 ## Optional / research / unknown
 - update the instructions for creating a "dummy" user on install and then adding the creation of the `waggle` user in the Ansible script so that it can be updated and easily versioned (instead of relying on the initial creation).  can tie this into sudoers access for `waggle` etc.
