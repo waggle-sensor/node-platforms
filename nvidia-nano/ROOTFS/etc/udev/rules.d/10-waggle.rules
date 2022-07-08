@@ -4,3 +4,6 @@ KERNEL=="eth*", ATTR{address}=="48:b0:2d:*", NAME="wan0"
 
 ## LAN configuration
 KERNEL=="eth*", ATTR{address}=="f8:e4:3b:*", NAME="lan0"
+
+## WIFI configuration
+KERNEL=="wlan*", KERNELS=="1-2", SUBSYSTEMS=="usb", NAME="wifi0"
