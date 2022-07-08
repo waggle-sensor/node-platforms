@@ -1211,14 +1211,45 @@ cat /root/.ssh/authorized_keys.prod >> /root/.ssh/authorized_keys
 
 > note: at this time an admin should be able to login to the nano via the reverse tunnel through the beekeeper administrative services
 
+## Get WES running
+
+After registration, the Beehive should automatically push WES to the node and start running its pods
+
+> Note: this section is intended to show what it looks like when WES is running, as a verification of things working
+
+```bash
+# kubectl get pod
+NAME                                        READY   STATUS              RESTARTS   AGE
+wes-audio-server-75847fd59-5ql4n            0/1     Pending             0          11m
+wes-gps-server-6dd8f84cb9-pkrvf             0/1     Pending             0          11m
+node-exporter-mdc5x                         1/1     Running             0          11m
+wes-upload-agent-pcjdn                      1/1     Running             0          11m
+wes-scoreboard-679ccdddb7-zfxms             1/1     Running             0          11m
+wes-metrics-agent-5frxw                     1/1     Running             0          11m
+wes-device-labeler-8vqdh                    1/1     Running             0          11m
+wes-node-influxdb-0                         1/1     Running             0          11m
+wes-camera-provisioner-1657315800-56t8f     0/1     ContainerCreating   0          4m56s
+wes-sciencerule-checker-646b4c6c4-h7clz     1/1     Running             0          11m
+wes-data-sharing-service-84b7958dd9-l4642   1/1     Running             4          11m
+wes-plugin-scheduler-c665b68b5-72r5z        1/1     Running             0          11m
+wes-rabbitmq-0                              1/1     Running             1          11m
+wes-node-influxdb-loader-6b58f7474-25k8n    1/1     Running             3          11m
+```
+
+You should start seeing metrics being published to the Beehive data store
+
+```bash
+$ curl -s 1-H 'Content-Type: application/json' https://data.sagecontinuum.org/api/v1/query -d '{"start": "-125s","filter": {"vsn": "N001"}}'  | grep uptime
+{"timestamp":"2022-07-08T21:37:50.542686843Z","name":"sys.uptime","value":12617.5,"meta":{"host":"000048b02d5bfe58.wd-nanocore","node":"000048b02d5bfe58","vsn":"N001"}}
+```
 
 # TODO ITEMS
 
 ## currently working on
- - launch and get WES running on the node
+- enable the overlayfs (this may need to be done before registration completes)
+  - its okay if the registration cert exists on the read-only partition, as its timed anyway and not a big secret
 
 ## later
-- enable the overlayfs
 - we need the `ip_set` kernel modules maybe
 - check service startup order (svg) to confirm its all good
 - get microphone running and wes configued to set the nano core as the node running the audio-server
