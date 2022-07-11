@@ -1219,6 +1219,17 @@ The black wire should connect to the ground pin and the red wire should connect 
             # Add bme680 to i2c
             echo bme680 0x76 > /sys/bus/i2c/devices/i2c-1/new_device
 
+            exit 0
+            ```
+
+        2. Escape insert mode, save and quit file
+
+        3. Give execution permission to the file `chmod +x /etc/rc.local`
+
+14. Reboot and on startup run steps 11 & 12 again to see if the BME680 sensor is set up on boot
+
+## Add fallback DNS
+
 ROOTFS file: ROOTFS/etc/systemd/resolved.conf.d/10-waggle-resolved.conf
 
 ## Add wifi dongle support
@@ -1228,14 +1239,6 @@ ROOTFS file: ROOTFS/etc/modprobe.d/rtl8821cu.conf
 ROOTFS file: ROOTFS/etc/modprobe.d/rtl8822bu.conf
 
 > Note: the modprobe conf files above disable the auto-power management (which is unstable)
-            exit 0
-            ```
-
-        2. Escape insert mode, save and quit file
-
-        3. Give execution permission to the file `chmod +x /etc/rc.local`
-
-14. Reboot and on startup run steps 11 & 12 again to see if the BME680 sensor is set up on boot
 
 ### Add 'waggle' hotspot support
 
