@@ -1,0 +1,11 @@
+- name: Configure Waggle Edge Stack
+  hosts: all
+  tasks:
+
+          - name: Retrieve the list of drives
+            ansible.builtin.command: lsblk
+            register: drives
+
+          - name: Setup the Extra Drive
+
+            when: drives.stdout.find('sda1') != 1
