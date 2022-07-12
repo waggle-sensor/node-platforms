@@ -1,0 +1,9 @@
+---
+- name: Check Disk Space Usage
+  hosts: hosts
+  tasks:
+          - name: Disk usage from command module
+            command: df -h
+            register: space
+          - debug:
+                  var: space.stdout_lines
