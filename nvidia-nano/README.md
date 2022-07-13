@@ -120,6 +120,7 @@ Now let's setup `root` SSH access
           1. Go to the bottom of the file
           2. Enter in `PermitRootLogin yes` and `PasswordAuthentication yes` (Make sure they are in seperate lines)
           3. Save and exit the file
+      2. run command `service sshd restart` to restart ssh service
       > Note: In vim to enter in insert mode press 'i'. To exit insert mode press 'esc'. To save and quit type in ':wq' and press enter when not in insert mode
 
   5. Open another terminal and SSH as root into the nano `ssh root@<ip>`
