@@ -1,0 +1,495 @@
+---
+- name: Check Jetpack version
+  hosts: all
+  tasks:
+    - name: Register jetpack version
+      command: apt-cache show nvidia-jetpack
+      register: jetpackVer
+
+    - name: Test for Jetpack 4.4.1
+      fail: msg="The wrong version of Jetpack was flashed. I want jetpack 4.4.1"
+      when: not ('4.4.1' in jetpackVer.stdout)
+
+- name: Set Up Extra Drive
+  hosts: all
+  tasks:
+    - name: Register disk var
+      command: lsblk
+      register: mydisk
+
+    - name: Check for sda
+      fail: msg="I could not find sda"
+      when: mydisk.stdout.find("sda") == 0
+
+    - name: Clear the current partition table and create GPT table
+      shell: echo -e "g\nw" | fdisk --wipe always --wipe-partitions always /dev/sda
+      args:
+        executable: /bin/bash
+
+    - name: Make the SWAP partition (16GB SWAP)
+      shell: echo -e "n\n1\n2048\n+16G\nt\n19\nw" | fdisk --wipe always --wipe-partitions always /dev/sda
+      args:
+        executable: /bin/bash
+
+    - name: Make the overlayfs 32GB
+      ignore_errors: yes # ignore old-partition table still being used error
+      shell: echo -e "n\n\n\n+32G\nw" | fdisk --wipe always --wipe-partitions always /dev/sda
+      args:
+        executable: /bin/bash
+
+    - name: Make the plugin-data (the rest of the space)
+      ignore_errors: yes # ignore old-partition table still being used error
+      shell: echo -e "n\n\n\n\nw" | fdisk --wipe always --wipe-partitions always /dev/sda
+      args:
+        executable: /bin/bash
+
+    - name: Use the new GPT table
+      shell: partprobe
+      args:
+        executable: /bin/bash
+
+    - name: Turn on the swap
+      shell: mkswap /dev/sda1 -L ext-swap
+      args:
+        executable: /bin/bash
+
+    - name: Put the swap in the startup partition file
+      shell: echo "/dev/sda1 swap swap defaults,nofail 0 0" >> /etc/fstab
+      args:
+        executable: /bin/bash
+
+    - name: Setup the overlayfs partition
+      shell: mkfs.ext4 /dev/sda2 && e2label /dev/sda2 system-data
+      args:
+        executable: /bin/bash
+
+    - name: Set the default mount of /media/plugin-data in the /etc/fstab
+      shell: mkfs.ext4 /dev/sda3 && e2label /dev/sda3 plugin-data && echo "/dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2" >> /etc/fstab
+      args:
+        executable: /bin/bash
+
+    - name: Unconditionally reboot the machine with all defaults
+      ansible.builtin.reboot:
+
+- name: Install Helpful Tools
+  hosts: all
+  tasks:
+    - name: install tools
+      ansible.builtin.apt:
+        name: dnsutils, htop, iftop, iotop, jq, nmap
+        update_cache: yes
+
+- name: Remove Uneeded Items
+  hosts: all
+  tasks:
+    - name: remove items
+      shell: apt-get purge -y \ isc-dhcp-server -y \ whoopsie && apt-get autoremove -y
+      args:
+        executable: /bin/bash
+
+    - name: Disable apt upgrade services
+      shell: systemctl disable apt-daily.service && systemctl disable apt-daily.timer && systemctl disable apt-daily-upgrade.service && systemctl disable apt-daily-upgrade.timer
+      args:
+        executable: /bin/bash
+
+    - name: Disable the motd news updates
+      shell: chmod -x /etc/update-motd.d/* && echo 'ENABLED=0' > /etc/default/motd-news && systemctl disable motd-news.service && systemctl disable motd-news.timer
+      args:
+        executable: /bin/bash
+
+- name: Add the WaggleOS MOTD
+  hosts: all
+  tasks:
+    - name: git checkout waggle-sensors/node-platforms
+      ansible.builtin.git:
+        repo: "https://github.com/waggle-sensor/node-platforms.git"
+        dest: /platforms
+
+    - name: Copy file /platforms/nvidia-nano/ROOTFS/etc/update-motd.d/05-waggle to system
+      shell: cp /platforms/nvidia-nano/ROOTFS/etc/update-motd.d/05-waggle /etc/update-motd.d/05-waggle && chmod +x /etc/update-motd.d/05-waggle
+      args:
+        executable: /bin/bash
+
+- name: Configure the Network Interface, Udev Rules
+  hosts: all
+  tasks:
+    - name: Copy file /platforms/nvidia-nano/ROOTFS/etc/udev/rules.d/10-waggle.rules to system
+      shell: cp /platforms/nvidia-nano/ROOTFS/etc/udev/rules.d/10-waggle.rules /etc/udev/rules.d/10-waggle.rules
+      args:
+        executable: /bin/bash
+
+    - name: Unconditionally reboot the machine with all defaults
+      ansible.builtin.reboot:
+
+- name: Configure journalctl to save historical logs
+  hosts: all
+  tasks:
+    - name: create the journal log folder
+      shell: mkdir -p /var/log/journal
+      args:
+        executable: /bin/bash
+
+    - name: add the journalctl config
+      shell: mkdir -p /etc/systemd/journald.conf.d/ && cp /platforms/nvidia-nano/ROOTFS/etc/systemd/journald.conf.d/10-waggle-journald.conf /etc/systemd/journald.conf.d/10-waggle-journald.conf
+      args:
+        executable: /bin/bash
+
+- name: Configure Docker to use External Media
+  hosts: all
+  tasks:
+    - name: Stop docker
+      shell: service docker stop
+      args:
+        executable: /bin/bash
+#Filesystem gets created when docker is started up
+    - name: Start up docker to create filesystem
+      shell: service docker start
+      args:
+        executable: /bin/bash
+
+    - name: Stop docker
+      shell: service docker stop
+      args:
+        executable: /bin/bash
+
+    - name: Move docker
+      shell: mv /var/lib/docker /media/plugin-data/
+      args:
+        executable: /bin/bash
+
+    - name: Create a symbolic link
+      shell: ln -s /media/plugin-data/docker/ /var/lib/docker
+      args:
+        executable: /bin/bash
+
+    - name: Start up docker
+      shell: service docker start
+      args:
+        executable: /bin/bash
+
+- name: Install k3s
+  hosts: all
+  tasks:
+    - name: Install Curl
+      shell: apt-get install libcurl4 && apt-get install curl
+      args:
+        executable: /bin/bash
+
+    - name: Install K3s via curl
+      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.20.2+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_CLUSTER_SECRET=4tX0DUZ0uQknRtVUAKjt sh -
+      args:
+        executable: /bin/bash
+
+- name: Configure k3s to Use External Media
+  hosts: all
+  tasks:
+    - name: Register service k3s var
+      ignore_errors: yes # ignore service not active error
+      command: service k3s status
+      register: k3s_service
+
+    - name: Check for k3s
+      fail: msg="k3s service is not found"
+      when: k3s_service.stdout.find("inactive") == 0
+
+    - name: create the neccessary directories in the external media
+      shell: mkdir -p /media/plugin-data/k3s/etc/rancher && mkdir -p /media/plugin-data/k3s/kubelet && mkdir -p /media/plugin-data/k3s/rancher
+      args:
+        executable: /bin/bash
+
+    - name: create symbolic links in the newly created directories
+      shell: ln -s /media/plugin-data/k3s/etc/rancher /etc/rancher && ln -s /media/plugin-data/k3s/kubelet /var/lib/kubelet && ln -s /media/plugin-data/k3s/rancher /var/lib/rancher
+      args:
+        executable: /bin/bash
+
+    - name: Enable k3s
+      command: systemctl enable k3s.service
+      register: k3s_output
+
+    - name: Check for K3s Output
+      fail: msg="symlinks were not created"
+      when: k3s_output.stdout.find("Created") == 0
+
+- name: Configure Network Manager to Not Manage the k3s Networks
+  hosts: all
+  tasks:
+    - name: Copy file /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/conf.d/cni.conf to system
+      shell: cp /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/conf.d/cni.conf /etc/NetworkManager/conf.d/cni.conf
+      args:
+        executable: /bin/bash
+
+- name: Set up k3s Shutdown Service
+  hosts: all
+  tasks:
+    - name: Copy file /platforms/nvidia-nano/ROOTFS/etc/systemd/system/waggle-k3s-shutdown.service to system
+      shell: cp /platforms/nvidia-nano/ROOTFS/etc/systemd/system/waggle-k3s-shutdown.service /etc/systemd/system/waggle-k3s-shutdown.service
+      args:
+        executable: /bin/bash
+
+    - name: Enable service
+      shell: systemctl daemon-reload && systemctl enable waggle-k3s-shutdown
+      args:
+        executable: /bin/bash
+
+- name: k3s Service Startup Customizations
+  hosts: all
+  tasks:
+    - name: Copy file /platforms/nvidia-nano/ROOTFS/etc/waggle to system
+      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/waggle /etc/waggle
+      args:
+        executable: /bin/bash
+
+    - name: Install python3-click
+      shell: echo "Y\n" | apt-get install python3-click
+      args:
+        executable: /bin/bash
+
+    - name: Install the waggle-nodeid tool
+      shell: wget https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb && dpkg -i waggle-nodeid_1.0.7_all.deb
+      args:
+        executable: /bin/bash
+
+    - name: Unconditionally reboot the machine with all defaults
+      ansible.builtin.reboot:
+
+    - name: test if the service is working
+      ignore_errors: yes # reads output as error so ignore error
+      command: service waggle-nodeid status
+      register: wagglenodeid_output
+
+    - name: Check waggle-nodeid Output
+      fail: msg="waggle-nodeid service is not working"
+      when: wagglenodeid_output.stdout.find("Saving Node ID") == 0
+
+    - name: Install waggle-node-hostname
+      shell: wget https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb && dpkg -i waggle-node-hostname_1.2.1_all.deb
+      args:
+        executable: /bin/bash
+
+    - name: Run Commands to rename hostname
+      shell: touch /etc/waggle/bk_key.pem && /usr/bin/waggle_node_hostname.py -n /etc/waggle/node-id && rm /etc/waggle/bk_key.pem
+      args:
+        executable: /bin/bash
+
+    - name: Unconditionally reboot the machine with all defaults
+      ansible.builtin.reboot:
+
+    - name: Configure the lan0 network interface to bind to 10.31.81.1
+      shell: cp /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/system-connections/lan /etc/NetworkManager/system-connections/lan && chmod 0600 /etc/NetworkManager/system-connections/lan
+      args:
+        executable: /bin/bash
+
+    - name: Configure the wan0 network interface
+      shell: cp /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/system-connections/wan /etc/NetworkManager/system-connections/wan && chmod 0600 /etc/NetworkManager/system-connections/wan
+      args:
+        executable: /bin/bash
+
+    - name: Configure the wifi network interface
+      shell: cp /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/system-connections/wifi /etc/NetworkManager/system-connections/wifi && chmod 0600 /etc/NetworkManager/system-connections/wifi
+      args:
+        executable: /bin/bash
+
+    - name: Install and configure dnsmasq to create the device's internal 10.31.81.1/24 network (for use by kubernetes).
+      shell: echo -e "y\n"| apt-get install dnsmasq && cp /platforms/nvidia-nano/ROOTFS/etc/dnsmasq.d/10-waggle-base.conf /etc/dnsmasq.d/10-waggle-base.conf && cp -r /platforms/nvidia-nano/ROOTFS/etc/systemd/system/dnsmasq.service.d /etc/systemd/system/dnsmasq.service.d && systemctl daemon-reload
+      args:
+        executable: /bin/bash
+
+    - name: Set up k3s service override
+      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/systemd/system/k3s.service.d /etc/systemd/system/k3s.service.d && systemctl daemon-reload
+      args:
+        executable: /bin/bash
+
+    - name: Install waggle-commontools to read the config
+      shell: wget https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb && dpkg -i waggle-common-tools_1.0.0_all.deb
+      args:
+        executable: /bin/bash
+
+# Install waggle common tools first it is depended on it
+- name: Install the Internet sharing service
+  hosts: all
+  tasks:
+    - name: install services
+      shell: wget https://github.com/waggle-sensor/waggle-internet-share/releases/download/v1.4.1/waggle-internet-share_1.4.1_all.deb && dpkg -i waggle-internet-share_1.4.1_all.deb
+      args:
+        executable: /bin/bash
+
+- name: k3s GPU access Config
+  hosts: all
+  tasks:
+    - name: Apply executable permissions to pre-run.sh
+      shell: chmod +x /etc/waggle/k3s_config/pre-run.sh
+      args:
+        executable: /bin/bash
+
+- name: Test k3s and Docker's GPU Access
+  hosts: all
+  tasks:
+    - name: Register k3s service override
+      command: service k3s status && systemctl cat k3s
+      register: k3s_service_output
+
+    - name: Test lan and wan are connected before testing k3s service
+      fail:
+        msg="The k3s service failed make sure you have lan0 and wan0 connected. The ethernet dongle connected to a usb port
+        (this is what you connect the camera to) and your uplink (to network switch) plugged into the nano ethernet port."
+      when: ('7538 ExecStartPre=/usr/bin/nmcli conn up lan (code=exited, status=4)' in k3s_service_output.stdout)
+
+    - name: Test k3s service override
+      fail: msg="The k3s service failed"
+      when: not ('running' in k3s_service_output.stdout)
+
+    - name: Register k3s Node
+      command: kubectl get node
+      register: k3s_node_output
+
+    - name: Test k3s and run basic pod
+      fail: msg="The node status is not ready"
+      when: not ('Ready' in k3s_node_output.stdout)
+
+    #we tested the whole ansible playbook on another nano up to this point 7/13/2022
+    - name: Test dnsmasq
+      shell: service dnsmasq status
+      args:
+        executable: /bin/bash
+
+    ### figure out how to test the gpu
+    - name: Pull docker GPU stress test image
+      shell: docker pull waggle/gpu-stress-test:1.0.1
+      args:
+        executable: /bin/bash
+
+    - name: Test docker's gpu access
+      shell: docker run -it --rm --runtime nvidia --network host waggle/gpu-stress-test:1.0.1 -m 2
+      args:
+        executable: /bin/bash
+
+- name: Configure The Local Dev Docker Registry
+  hosts: all
+  tasks:
+    - name: Setup the local docker registry mirrors (as the k3s config uses them)
+      shell: cp /platforms/nvidia-nano/ROOTFS/etc/systemd/system/waggle-registry-local.service /etc/systemd/system/waggle-registry-local.service
+      args:
+        executable: /bin/bash
+
+    - name: Configure the local dev docker keys
+      shell: chmod 600 /etc/waggle/docker/certs/domain.* && mkdir -p /etc/docker/certs.d/10.31.81.1\:5000/ && cp /etc/waggle/docker/certs/domain.crt /etc/docker/certs.d/10.31.81.1\:5000/ && mkdir -p /usr/local/share/ca-certificates && cp /etc/waggle/docker/certs/domain.crt /usr/local/share/ca-certificates/docker.crt
+      args:
+        executable: /bin/bash
+
+    - name: Update Certificates
+      shell: update-ca-certificates
+      args:
+        executable: /bin/bash
+
+    - name: Make the directories for the docker registries
+      shell: mkdir -p /media/plugin-data/docker_registry/local
+      args:
+        executable: /bin/bash
+
+    - name: Enable the docker registry services
+      shell: systemctl daemon-reload && systemctl enable waggle-registry-local.service
+      args:
+        executable: /bin/bash
+
+    - name: push and pull from local registry
+      shell: docker pull ubuntu:latest && docker tag ubuntu:latest 10.31.81.1:5000/joe:latest && curl https://10.31.81.1:5000/v2/_catalog && docker push 10.31.81.1:5000/joe:latest
+      args:
+        executable: /bin/bash
+
+    - name: Register local dev docker registry
+      command: curl https://10.31.81.1:5000/v2/_catalog
+      register: localdev_output
+
+    - name: Test the local dev docker registry
+      fail: msg="The local dev docker registry failed"
+      when: not ('joe' in localdev_output)
+
+- name: Add fallback DNS
+  hosts: all
+  tasks:
+    - name: Copy ROOTFS/etc/systemd/resolved.conf.d/10-waggle-resolved.conf to system
+      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/systemd/resolved.conf.d/10-waggle-resolved.conf /etc/systemd/resolved.conf.d/10-waggle-resolved.conf
+      args:
+        executable: /bin/bash
+
+# Note: the modprobe conf files below disable the auto-power management (which is unstable)
+- name: Add wifi dongle support
+  hosts: all
+  tasks:
+    - name: Copy ROOTFS/etc/udev/rules.d/10-waggle.rules to system
+      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/udev/rules.d/10-waggle.rules /etc/udev/rules.d/10-waggle.rules
+      args:
+        executable: /bin/bash
+
+    - name: Copy ROOTFS/etc/modprobe.d/rtl8821cu.conf to system
+      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/modprobe.d/rtl8821cu.conf /etc/modprobe.d/rtl8821cu.conf
+      args:
+        executable: /bin/bash
+
+    - name: Copy ROOTFS/etc/modprobe.d/rtl8822bu.conf to system
+      shell: cp -r  /platforms/nvidia-nano/ROOTFS/etc/modprobe.d/rtl8822bu.conf /etc/modprobe.d/rtl8822bu.conf
+      args:
+        executable: /bin/bash
+
+- name: Add waggle hotspot support
+  hosts: all
+  tasks:
+    - name: Copy ROOTFS/etc/NetworkManager/system-connections/wifi-waggle to system
+      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/system-connections/wifi-waggle /etc/NetworkManager/system-connections/wifi-waggle
+      args:
+        executable: /bin/bash
+
+    # Note: the device will auto-connect to a ssid: waggle / passwd: Why1Not@Waggle network now
+    - name: Apply 600 permission to system-connections
+      shell: chmod 600 /etc/NetworkManager/system-connections/*
+      args:
+        executable: /bin/bash
+
+- name: Enable NetworkManager Connectivity checks
+  hosts: all
+  tasks:
+    - name: Copy ROOTFS/etc/NetworkManager/conf.d/99-connectivity.conf to system
+      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/conf.d/99-connectivity.conf /etc/NetworkManager/conf.d/99-connectivity.conf
+      args:
+        executable: /bin/bash
+
+    - name: Ensure that default ip route that is used actually has an Internet connection
+      shell: echo 'net.ipv4.conf.default.rp_filter = 2' >> /etc/sysctl.conf && echo 'net.ipv4.conf.all.rp_filter = 2' >> /etc/sysctl.conf
+      args:
+        executable: /bin/bash
+
+#Note: the below instructions hard-code a static VSN. In the future we will want to generate a random VSN (NXXX where X is a [0-9A-Z]) (TODO)
+- name: Set the node friendly ID (VSN)
+  hosts: all
+  tasks:
+    - name: Hard-code a static VSN
+      shell: echo N001 > /etc/waggle/vsn
+      args:
+        executable: /bin/bash
+# - name: Register node and establish connection to Beehive
+#   hosts: all
+#   tasks:
+#     - name: download the registration and reverse tunnel services
+#       shell: wget https://github.com/waggle-sensor/waggle-bk-registration/releases/download/v2.2.2/waggle-bk-registration_2.2.2_all.deb && wget https://github.com/waggle-sensor/waggle-bk-reverse-tunnel/releases/download/v2.3.2/waggle-bk-reverse-tunnel_2.3.2_all.deb
+#       args:
+#         executable: /bin/bash
+
+#     - name: install the registration and reverse tunnel services
+#       shell: dpkg -i waggle-bk-registration_2.2.2_all.deb && dpkg -i waggle-bk-reverse-tunnel_2.3.2_all.deb
+#       args:
+#         executable: /bin/bash
+
+#     - name: Unconditionally reboot the machine with all defaults
+#       ansible.builtin.reboot:
+
+#     - name: Copy the Beekeeper known hosts public CA
+#       shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/ssh/ssh_known_hosts /etc/ssh/ssh_known_hosts && chmod 644 /etc/ssh/ssh_known_hosts
+#       args:
+#         executable: /bin/bash
+
+# # note: this file is not checked into the code at this time, need to triple-check its safe to do so. (TODO)
+#     # - name: Copy registration private key
+#     #   shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/waggle/sage_registration /etc/waggle/sage_registration && chmod 600 /etc/waggle/sage_registration
+#     #   args:
+#     #     executable: /bin/bash
+
