@@ -1,4 +1,4 @@
----
+--- #Do app installs and then copy ROOTFS in the very beginning after disk setup (look at the comments to see where to insert cp ROOTFS
 - name: Check Jetpack version
   hosts: all
   tasks:
@@ -36,7 +36,8 @@
       shell: echo -e "n\n\n\n+32G\nw" | fdisk --wipe always --wipe-partitions always /dev/sda
       args:
         executable: /bin/bash
-
+#To DO change this so that it doesn't ignore all errors
+#use built in module
     - name: Make the plugin-data (the rest of the space)
       ignore_errors: yes # ignore old-partition table still being used error
       shell: echo -e "n\n\n\n\nw" | fdisk --wipe always --wipe-partitions always /dev/sda
@@ -52,12 +53,12 @@
       shell: mkswap /dev/sda1 -L ext-swap
       args:
         executable: /bin/bash
-
+#use built in module to edit fstab
     - name: Put the swap in the startup partition file
       shell: echo "/dev/sda1 swap swap defaults,nofail 0 0" >> /etc/fstab
       args:
         executable: /bin/bash
-
+#break up && to seperate tasks
     - name: Setup the overlayfs partition
       shell: mkfs.ext4 /dev/sda2 && e2label /dev/sda2 system-data
       args:
@@ -96,7 +97,7 @@
       shell: chmod -x /etc/update-motd.d/* && echo 'ENABLED=0' > /etc/default/motd-news && systemctl disable motd-news.service && systemctl disable motd-news.timer
       args:
         executable: /bin/bash
-
+# add k3s curl in here and the waggle tools here and then copy ROOTFS into the system
 - name: Add the WaggleOS MOTD
   hosts: all
   tasks:
@@ -104,7 +105,7 @@
       ansible.builtin.git:
         repo: "https://github.com/waggle-sensor/node-platforms.git"
         dest: /platforms
-
+#checkout the repo to the host and copy files from host to client instead of checkout repo on nano
     - name: Copy file /platforms/nvidia-nano/ROOTFS/etc/update-motd.d/05-waggle to system
       shell: cp /platforms/nvidia-nano/ROOTFS/etc/update-motd.d/05-waggle /etc/update-motd.d/05-waggle && chmod +x /etc/update-motd.d/05-waggle
       args:
@@ -183,6 +184,7 @@
 - name: Configure k3s to Use External Media
   hosts: all
   tasks:
+  #delete the bottom two task no need to check
     - name: Register service k3s var
       ignore_errors: yes # ignore service not active error
       command: service k3s status
@@ -201,7 +203,7 @@
       shell: ln -s /media/plugin-data/k3s/etc/rancher /etc/rancher && ln -s /media/plugin-data/k3s/kubelet /var/lib/kubelet && ln -s /media/plugin-data/k3s/rancher /var/lib/rancher
       args:
         executable: /bin/bash
-
+#move enable after k3s customization
     - name: Enable k3s
       command: systemctl enable k3s.service
       register: k3s_output
@@ -238,7 +240,7 @@
       shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/waggle /etc/waggle
       args:
         executable: /bin/bash
-
+#add all apt to one tasks
     - name: Install python3-click
       shell: echo "Y\n" | apt-get install python3-click
       args:
@@ -260,7 +262,7 @@
     - name: Check waggle-nodeid Output
       fail: msg="waggle-nodeid service is not working"
       when: wagglenodeid_output.stdout.find("Saving Node ID") == 0
-
+#the bottom two task are work arounds will be changed later
     - name: Install waggle-node-hostname
       shell: wget https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb && dpkg -i waggle-node-hostname_1.2.1_all.deb
       args:
@@ -270,7 +272,7 @@
       shell: touch /etc/waggle/bk_key.pem && /usr/bin/waggle_node_hostname.py -n /etc/waggle/node-id && rm /etc/waggle/bk_key.pem
       args:
         executable: /bin/bash
-
+#Check if reboot is neccessary for hostname to change
     - name: Unconditionally reboot the machine with all defaults
       ansible.builtin.reboot:
 
@@ -312,7 +314,7 @@
       shell: wget https://github.com/waggle-sensor/waggle-internet-share/releases/download/v1.4.1/waggle-internet-share_1.4.1_all.deb && dpkg -i waggle-internet-share_1.4.1_all.deb
       args:
         executable: /bin/bash
-
+#move k3s gpu into customization
 - name: k3s GPU access Config
   hosts: all
   tasks:
@@ -320,7 +322,7 @@
       shell: chmod +x /etc/waggle/k3s_config/pre-run.sh
       args:
         executable: /bin/bash
-
+#remove test gpu access not needed
 - name: Test k3s and Docker's GPU Access
   hosts: all
   tasks:
@@ -370,7 +372,7 @@
       shell: cp /platforms/nvidia-nano/ROOTFS/etc/systemd/system/waggle-registry-local.service /etc/systemd/system/waggle-registry-local.service
       args:
         executable: /bin/bash
-
+#do chmod after you copy
     - name: Configure the local dev docker keys
       shell: chmod 600 /etc/waggle/docker/certs/domain.* && mkdir -p /etc/docker/certs.d/10.31.81.1\:5000/ && cp /etc/waggle/docker/certs/domain.crt /etc/docker/certs.d/10.31.81.1\:5000/ && mkdir -p /usr/local/share/ca-certificates && cp /etc/waggle/docker/certs/domain.crt /usr/local/share/ca-certificates/docker.crt
       args:
@@ -385,7 +387,7 @@
       shell: mkdir -p /media/plugin-data/docker_registry/local
       args:
         executable: /bin/bash
-
+#do start not enable: enable will run after reboot
     - name: Enable the docker registry services
       shell: systemctl daemon-reload && systemctl enable waggle-registry-local.service
       args:
