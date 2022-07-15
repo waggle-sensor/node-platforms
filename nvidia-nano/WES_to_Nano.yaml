@@ -1,4 +1,5 @@
---- #Do app installs and then copy ROOTFS in the very beginning after disk setup (look at the comments to see where to insert cp ROOTFS
+---
+#break up && to seperate tasks
 - name: Check Jetpack version
   hosts: all
   tasks:
@@ -58,7 +59,7 @@
       shell: echo "/dev/sda1 swap swap defaults,nofail 0 0" >> /etc/fstab
       args:
         executable: /bin/bash
-#break up && to seperate tasks
+
     - name: Setup the overlayfs partition
       shell: mkfs.ext4 /dev/sda2 && e2label /dev/sda2 system-data
       args:
@@ -72,21 +73,63 @@
     - name: Unconditionally reboot the machine with all defaults
       ansible.builtin.reboot:
 
-- name: Install Helpful Tools
+- name: Install Tools
   hosts: all
   tasks:
-    - name: install tools
+    - name: install helpful tools
       ansible.builtin.apt:
-        name: dnsutils, htop, iftop, iotop, jq, nmap
+        name: dnsutils, htop, iftop, iotop, jq, nmap, curl, python3-click, dnsmasq, 
         update_cache: yes
+        state: build-dep
+
+    - name: Install K3s via curl
+      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.20.2+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_CLUSTER_SECRET=4tX0DUZ0uQknRtVUAKjt sh -
+      args:
+        executable: /bin/bash
+
+    - name: Install the waggle-nodeid tool
+      shell: wget https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb && dpkg -i waggle-nodeid_1.0.7_all.deb
+      args:
+        executable: /bin/bash
+  
+    - name: Install waggle-node-hostname #the tool is used for a work around to change the hostname 
+      shell: wget https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb && dpkg -i waggle-node-hostname_1.2.1_all.deb
+      args:
+        executable: /bin/bash
+
+    - name: Install waggle-commontools to read the config
+      shell: wget https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb && dpkg -i waggle-common-tools_1.0.0_all.deb
+      args:
+        executable: /bin/bash
+
+    - name: Install Internet sharing service # Install waggle common tools first it is depended on it
+      shell: wget https://github.com/waggle-sensor/waggle-internet-share/releases/download/v1.4.1/waggle-internet-share_1.4.1_all.deb && dpkg -i waggle-internet-share_1.4.1_all.deb
+      args:
+        executable: /bin/bash
+
+    - name: download the registration and reverse tunnel services
+      shell: wget https://github.com/waggle-sensor/waggle-bk-registration/releases/download/v2.2.2/waggle-bk-registration_2.2.2_all.deb && wget https://github.com/waggle-sensor/waggle-bk-reverse-tunnel/releases/download/v2.3.2/waggle-bk-reverse-tunnel_2.3.2_all.deb
+      args:
+        executable: /bin/bash
+
+    - name: install the registration and reverse tunnel services
+      shell: dpkg -i waggle-bk-registration_2.2.2_all.deb && dpkg -i waggle-bk-reverse-tunnel_2.3.2_all.deb
+      args:
+        executable: /bin/bash
 
 - name: Remove Uneeded Items
   hosts: all
   tasks:
-    - name: remove items
-      shell: apt-get purge -y \ isc-dhcp-server -y \ whoopsie && apt-get autoremove -y
-      args:
-        executable: /bin/bash
+
+    - name: Remove packages
+      ansible.builtin.apt:
+        name: isc-dhcp-server, whoopsie
+        state: absent
+        purge: yes
+
+    - name: Remove dependencies that are no longer required
+      ansible.builtin.apt:
+        autoremove: yes
 
     - name: Disable apt upgrade services
       shell: systemctl disable apt-daily.service && systemctl disable apt-daily.timer && systemctl disable apt-daily-upgrade.service && systemctl disable apt-daily-upgrade.timer
@@ -97,43 +140,130 @@
       shell: chmod -x /etc/update-motd.d/* && echo 'ENABLED=0' > /etc/default/motd-news && systemctl disable motd-news.service && systemctl disable motd-news.timer
       args:
         executable: /bin/bash
-# add k3s curl in here and the waggle tools here and then copy ROOTFS into the system
-- name: Add the WaggleOS MOTD
-  hosts: all
-  tasks:
-    - name: git checkout waggle-sensors/node-platforms
-      ansible.builtin.git:
-        repo: "https://github.com/waggle-sensor/node-platforms.git"
-        dest: /platforms
-#checkout the repo to the host and copy files from host to client instead of checkout repo on nano
-    - name: Copy file /platforms/nvidia-nano/ROOTFS/etc/update-motd.d/05-waggle to system
-      shell: cp /platforms/nvidia-nano/ROOTFS/etc/update-motd.d/05-waggle /etc/update-motd.d/05-waggle && chmod +x /etc/update-motd.d/05-waggle
-      args:
-        executable: /bin/bash
 
-- name: Configure the Network Interface, Udev Rules
+- name: Copy ROOTFS into the System
   hosts: all
   tasks:
-    - name: Copy file /platforms/nvidia-nano/ROOTFS/etc/udev/rules.d/10-waggle.rules to system
-      shell: cp /platforms/nvidia-nano/ROOTFS/etc/udev/rules.d/10-waggle.rules /etc/udev/rules.d/10-waggle.rules
+    - name: Add the WaggleOS MOTD
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/update-motd.d/05-waggle'
+        dest: /etc/update-motd.d/05-waggle
+        mode: a+x
+    
+    - name: Configure the Network Interface, Udev Rules
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/udev/rules.d/10-waggle.rules'
+        dest: /etc/udev/rules.d/10-waggle.rules
+
+    - name: create the journal log folder if it does not exist
+      ansible.builtin.file:
+        path: /var/log/journal
+        state: directory
+        recurse: yes
+
+    - name: Create journalctl config directory if it does not exist
+      ansible.builtin.file:
+        path: /etc/systemd/journald.conf.d
+        state: directory
+        recurse: yes
+
+    - name: add the journalctl config to configure journalctl to save historical logs
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/systemd/journald.conf.d/10-waggle-journald.conf'
+        dest: /etc/systemd/journald.conf.d/10-waggle-journald.conf
+
+    - name: Configure Network Manager to Not Manage the k3s Networks
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/NetworkManager/conf.d/cni.conf'
+        dest: /etc/NetworkManager/conf.d/cni.conf
+
+    - name: Set up k3s Shutdown Service
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/systemd/system/waggle-k3s-shutdown.service'
+        dest: /etc/systemd/system/waggle-k3s-shutdown.service
+       
+    - name: Copy directory /ROOTFS/etc/waggle to system
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/waggle'
+        dest: /etc/waggle
+
+    - name: Configure the lan0 network interface to bind to 10.31.81.1
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/NetworkManager/system-connections/lan'
+        dest: /etc/NetworkManager/system-connections/lan
+        mode: 0600
+
+    - name: Configure the wan0 network interface
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/NetworkManager/system-connections/wan'
+        dest: /etc/NetworkManager/system-connections/wan
+        mode: 0600
+
+    - name: Configure the wifi network interface
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/NetworkManager/system-connections/wifi'
+        dest: /etc/NetworkManager/system-connections/wifi
+        mode: 0600
+ 
+    - name: Configure dnsmasq to create the device's internal 10.31.81.1/24 network (for use by kubernetes) by copying 10-waggle-base config file.
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/dnsmasq.d/10-waggle-base.conf'
+        dest: /etc/dnsmasq.d/10-waggle-base.conf
+
+    - name: Configure dnsmasq to create the device's internal 10.31.81.1/24 network by copying dnsmasq.service.d directory.
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/systemd/system/dnsmasq.service.d'
+        dest: /etc/systemd/system/dnsmasq.service.d
+
+    - name: Set up k3s service override
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/systemd/system/k3s.service.d'
+        dest: /etc/systemd/system/k3s.service.d
+
+    - name: Setup the local docker registry mirrors (as the k3s config uses them)
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/systemd/system/waggle-registry-local.service'
+        dest: /etc/systemd/system/waggle-registry-local.service
+
+    - name: Add fallback DNS
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/systemd/resolved.conf.d/10-waggle-resolved.conf'
+        dest: /etc/systemd/resolved.conf.d/10-waggle-resolved.conf
+
+    - name: Add wifi dongle support by copying ROOTFS/etc/udev/rules.d/10-waggle.rules to system
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/udev/rules.d/10-waggle.rules'
+        dest: /etc/udev/rules.d/10-waggle.rules
+
+    - name: Add wifi dongle support by copying ROOTFS/etc/modprobe.d/rtl8821cu.conf to system
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/modprobe.d/rtl8821cu.conf'
+        dest: /etc/modprobe.d/rtl8821cu.conf
+
+    - name: Add wifi dongle support by copying ROOTFS/etc/modprobe.d/rtl8822bu.conf to system
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/modprobe.d/rtl8822bu.conf'
+        dest: /etc/modprobe.d/rtl8822bu.conf
+
+    - name: Add waggle hotspot support by copying ROOTFS/etc/NetworkManager/system-connections/wifi-waggle to system
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/NetworkManager/system-connections/wifi-waggle'
+        dest: /etc/NetworkManager/system-connections/wifi-waggle
+
+    - name: Enable NetworkManager Connectivity checks by copying ROOTFS/etc/NetworkManager/conf.d/99-connectivity.conf to system
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/NetworkManager/conf.d/99-connectivity.conf'
+        dest: /etc/NetworkManager/conf.d/99-connectivity.conf
+
+
+   - name: Reload Daemon
+      shell: systemctl daemon-reload
       args:
         executable: /bin/bash
 
     - name: Unconditionally reboot the machine with all defaults
       ansible.builtin.reboot:
 
-- name: Configure journalctl to save historical logs
-  hosts: all
-  tasks:
-    - name: create the journal log folder
-      shell: mkdir -p /var/log/journal
-      args:
-        executable: /bin/bash
-
-    - name: add the journalctl config
-      shell: mkdir -p /etc/systemd/journald.conf.d/ && cp /platforms/nvidia-nano/ROOTFS/etc/systemd/journald.conf.d/10-waggle-journald.conf /etc/systemd/journald.conf.d/10-waggle-journald.conf
-      args:
-        executable: /bin/bash
 
 - name: Configure Docker to use External Media
   hosts: all
@@ -168,19 +298,6 @@
       args:
         executable: /bin/bash
 
-- name: Install k3s
-  hosts: all
-  tasks:
-    - name: Install Curl
-      shell: apt-get install libcurl4 && apt-get install curl
-      args:
-        executable: /bin/bash
-
-    - name: Install K3s via curl
-      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.20.2+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_CLUSTER_SECRET=4tX0DUZ0uQknRtVUAKjt sh -
-      args:
-        executable: /bin/bash
-
 - name: Configure k3s to Use External Media
   hosts: all
   tasks:
@@ -212,116 +329,29 @@
       fail: msg="symlinks were not created"
       when: k3s_output.stdout.find("Created") == 0
 
-- name: Configure Network Manager to Not Manage the k3s Networks
-  hosts: all
-  tasks:
-    - name: Copy file /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/conf.d/cni.conf to system
-      shell: cp /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/conf.d/cni.conf /etc/NetworkManager/conf.d/cni.conf
-      args:
-        executable: /bin/bash
-
-- name: Set up k3s Shutdown Service
-  hosts: all
-  tasks:
-    - name: Copy file /platforms/nvidia-nano/ROOTFS/etc/systemd/system/waggle-k3s-shutdown.service to system
-      shell: cp /platforms/nvidia-nano/ROOTFS/etc/systemd/system/waggle-k3s-shutdown.service /etc/systemd/system/waggle-k3s-shutdown.service
-      args:
-        executable: /bin/bash
-
-    - name: Enable service
-      shell: systemctl daemon-reload && systemctl enable waggle-k3s-shutdown
-      args:
-        executable: /bin/bash
 
 - name: k3s Service Startup Customizations
   hosts: all
   tasks:
-    - name: Copy file /platforms/nvidia-nano/ROOTFS/etc/waggle to system
-      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/waggle /etc/waggle
-      args:
-        executable: /bin/bash
-#add all apt to one tasks
-    - name: Install python3-click
-      shell: echo "Y\n" | apt-get install python3-click
+    - name: Enable k3s Shutdown Service
+      shell: systemctl daemon-reload && systemctl enable waggle-k3s-shutdown
       args:
         executable: /bin/bash
 
-    - name: Install the waggle-nodeid tool
-      shell: wget https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb && dpkg -i waggle-nodeid_1.0.7_all.deb
-      args:
-        executable: /bin/bash
-
-    - name: Unconditionally reboot the machine with all defaults
-      ansible.builtin.reboot:
-
-    - name: test if the service is working
-      ignore_errors: yes # reads output as error so ignore error
-      command: service waggle-nodeid status
-      register: wagglenodeid_output
-
-    - name: Check waggle-nodeid Output
-      fail: msg="waggle-nodeid service is not working"
-      when: wagglenodeid_output.stdout.find("Saving Node ID") == 0
-#the bottom two task are work arounds will be changed later
-    - name: Install waggle-node-hostname
-      shell: wget https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb && dpkg -i waggle-node-hostname_1.2.1_all.deb
-      args:
-        executable: /bin/bash
-
-    - name: Run Commands to rename hostname
+    - name: Run Commands to rename hostname #the task is a work around will be changed later
       shell: touch /etc/waggle/bk_key.pem && /usr/bin/waggle_node_hostname.py -n /etc/waggle/node-id && rm /etc/waggle/bk_key.pem
       args:
         executable: /bin/bash
+
 #Check if reboot is neccessary for hostname to change
-    - name: Unconditionally reboot the machine with all defaults
-      ansible.builtin.reboot:
+    # - name: Unconditionally reboot the machine with all defaults
+    #   ansible.builtin.reboot:
 
-    - name: Configure the lan0 network interface to bind to 10.31.81.1
-      shell: cp /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/system-connections/lan /etc/NetworkManager/system-connections/lan && chmod 0600 /etc/NetworkManager/system-connections/lan
-      args:
-        executable: /bin/bash
+    - name: Configure k3s GPU access by applying executable permissions to pre-run.sh
+      ansible.builtin.file: 
+        path: /etc/waggle/k3s_config/pre-run.sh
+        mode: a+x
 
-    - name: Configure the wan0 network interface
-      shell: cp /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/system-connections/wan /etc/NetworkManager/system-connections/wan && chmod 0600 /etc/NetworkManager/system-connections/wan
-      args:
-        executable: /bin/bash
-
-    - name: Configure the wifi network interface
-      shell: cp /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/system-connections/wifi /etc/NetworkManager/system-connections/wifi && chmod 0600 /etc/NetworkManager/system-connections/wifi
-      args:
-        executable: /bin/bash
-
-    - name: Install and configure dnsmasq to create the device's internal 10.31.81.1/24 network (for use by kubernetes).
-      shell: echo -e "y\n"| apt-get install dnsmasq && cp /platforms/nvidia-nano/ROOTFS/etc/dnsmasq.d/10-waggle-base.conf /etc/dnsmasq.d/10-waggle-base.conf && cp -r /platforms/nvidia-nano/ROOTFS/etc/systemd/system/dnsmasq.service.d /etc/systemd/system/dnsmasq.service.d && systemctl daemon-reload
-      args:
-        executable: /bin/bash
-
-    - name: Set up k3s service override
-      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/systemd/system/k3s.service.d /etc/systemd/system/k3s.service.d && systemctl daemon-reload
-      args:
-        executable: /bin/bash
-
-    - name: Install waggle-commontools to read the config
-      shell: wget https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb && dpkg -i waggle-common-tools_1.0.0_all.deb
-      args:
-        executable: /bin/bash
-
-# Install waggle common tools first it is depended on it
-- name: Install the Internet sharing service
-  hosts: all
-  tasks:
-    - name: install services
-      shell: wget https://github.com/waggle-sensor/waggle-internet-share/releases/download/v1.4.1/waggle-internet-share_1.4.1_all.deb && dpkg -i waggle-internet-share_1.4.1_all.deb
-      args:
-        executable: /bin/bash
-#move k3s gpu into customization
-- name: k3s GPU access Config
-  hosts: all
-  tasks:
-    - name: Apply executable permissions to pre-run.sh
-      shell: chmod +x /etc/waggle/k3s_config/pre-run.sh
-      args:
-        executable: /bin/bash
 #remove test gpu access not needed
 - name: Test k3s and Docker's GPU Access
   hosts: all
@@ -348,13 +378,11 @@
       fail: msg="The node status is not ready"
       when: not ('Ready' in k3s_node_output.stdout)
 
-    #we tested the whole ansible playbook on another nano up to this point 7/13/2022
     - name: Test dnsmasq
       shell: service dnsmasq status
       args:
         executable: /bin/bash
 
-    ### figure out how to test the gpu
     - name: Pull docker GPU stress test image
       shell: docker pull waggle/gpu-stress-test:1.0.1
       args:
@@ -368,15 +396,36 @@
 - name: Configure The Local Dev Docker Registry
   hosts: all
   tasks:
-    - name: Setup the local docker registry mirrors (as the k3s config uses them)
-      shell: cp /platforms/nvidia-nano/ROOTFS/etc/systemd/system/waggle-registry-local.service /etc/systemd/system/waggle-registry-local.service
-      args:
-        executable: /bin/bash
-#do chmod after you copy
-    - name: Configure the local dev docker keys
-      shell: chmod 600 /etc/waggle/docker/certs/domain.* && mkdir -p /etc/docker/certs.d/10.31.81.1\:5000/ && cp /etc/waggle/docker/certs/domain.crt /etc/docker/certs.d/10.31.81.1\:5000/ && mkdir -p /usr/local/share/ca-certificates && cp /etc/waggle/docker/certs/domain.crt /usr/local/share/ca-certificates/docker.crt
-      args:
-        executable: /bin/bash
+    - name: apply 600 permissions to Local Dev Docker Registry domain key and crt
+      ansible.builtin.file:
+        path: /etc/waggle/docker/certs/domain.*
+        mode: 0600
+
+    - name: Create local dev docker registry directory
+      ansible.builtin.file:
+        path: /etc/docker/certs.d/10.31.81.1\:5000/
+        state: directory
+        recurse: yes
+
+    - name: Copy domain crt to local dev docker registry directory
+      ansible.builtin.copy:
+        src: /etc/waggle/docker/certs/domain.crt
+        dest: /etc/docker/certs.d/10.31.81.1\:5000/
+        remote_src: yes
+        mode: 0600
+
+    - name: Create ca-certificate directory
+      ansible.builtin.file:
+        path: /usr/local/share/ca-certificates
+        state: directory
+        recurse: yes
+    
+    - name: Copy domain.crt to ca-certificates directory
+      ansible.builtin.copy:
+        src: /etc/waggle/docker/certs/domain.crt
+        dest: /usr/local/share/ca-certificates/docker.crt
+        remote_src: yes
+        mode: 0600
 
     - name: Update Certificates
       shell: update-ca-certificates
@@ -384,12 +433,13 @@
         executable: /bin/bash
 
     - name: Make the directories for the docker registries
-      shell: mkdir -p /media/plugin-data/docker_registry/local
-      args:
-        executable: /bin/bash
-#do start not enable: enable will run after reboot
+      ansible.builtin.file:
+        path: /media/plugin-data/docker_registry/local
+        state: directory
+        recurse: yes
+
     - name: Enable the docker registry services
-      shell: systemctl daemon-reload && systemctl enable waggle-registry-local.service
+      shell: systemctl daemon-reload && systemctl start waggle-registry-local.service
       args:
         executable: /bin/bash
 
@@ -406,54 +456,19 @@
       fail: msg="The local dev docker registry failed"
       when: not ('joe' in localdev_output)
 
-- name: Add fallback DNS
-  hosts: all
-  tasks:
-    - name: Copy ROOTFS/etc/systemd/resolved.conf.d/10-waggle-resolved.conf to system
-      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/systemd/resolved.conf.d/10-waggle-resolved.conf /etc/systemd/resolved.conf.d/10-waggle-resolved.conf
-      args:
-        executable: /bin/bash
-
-# Note: the modprobe conf files below disable the auto-power management (which is unstable)
-- name: Add wifi dongle support
-  hosts: all
-  tasks:
-    - name: Copy ROOTFS/etc/udev/rules.d/10-waggle.rules to system
-      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/udev/rules.d/10-waggle.rules /etc/udev/rules.d/10-waggle.rules
-      args:
-        executable: /bin/bash
-
-    - name: Copy ROOTFS/etc/modprobe.d/rtl8821cu.conf to system
-      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/modprobe.d/rtl8821cu.conf /etc/modprobe.d/rtl8821cu.conf
-      args:
-        executable: /bin/bash
-
-    - name: Copy ROOTFS/etc/modprobe.d/rtl8822bu.conf to system
-      shell: cp -r  /platforms/nvidia-nano/ROOTFS/etc/modprobe.d/rtl8822bu.conf /etc/modprobe.d/rtl8822bu.conf
-      args:
-        executable: /bin/bash
-
 - name: Add waggle hotspot support
   hosts: all
   tasks:
-    - name: Copy ROOTFS/etc/NetworkManager/system-connections/wifi-waggle to system
-      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/system-connections/wifi-waggle /etc/NetworkManager/system-connections/wifi-waggle
-      args:
-        executable: /bin/bash
 
     # Note: the device will auto-connect to a ssid: waggle / passwd: Why1Not@Waggle network now
     - name: Apply 600 permission to system-connections
-      shell: chmod 600 /etc/NetworkManager/system-connections/*
-      args:
-        executable: /bin/bash
+      ansible.builtin.file:
+        path: /etc/NetworkManager/system-connections/*
+        mode: 0600
 
 - name: Enable NetworkManager Connectivity checks
   hosts: all
   tasks:
-    - name: Copy ROOTFS/etc/NetworkManager/conf.d/99-connectivity.conf to system
-      shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/NetworkManager/conf.d/99-connectivity.conf /etc/NetworkManager/conf.d/99-connectivity.conf
-      args:
-        executable: /bin/bash
 
     - name: Ensure that default ip route that is used actually has an Internet connection
       shell: echo 'net.ipv4.conf.default.rp_filter = 2' >> /etc/sysctl.conf && echo 'net.ipv4.conf.all.rp_filter = 2' >> /etc/sysctl.conf
@@ -468,21 +483,12 @@
       shell: echo N001 > /etc/waggle/vsn
       args:
         executable: /bin/bash
+
+
+
 # - name: Register node and establish connection to Beehive
 #   hosts: all
 #   tasks:
-#     - name: download the registration and reverse tunnel services
-#       shell: wget https://github.com/waggle-sensor/waggle-bk-registration/releases/download/v2.2.2/waggle-bk-registration_2.2.2_all.deb && wget https://github.com/waggle-sensor/waggle-bk-reverse-tunnel/releases/download/v2.3.2/waggle-bk-reverse-tunnel_2.3.2_all.deb
-#       args:
-#         executable: /bin/bash
-
-#     - name: install the registration and reverse tunnel services
-#       shell: dpkg -i waggle-bk-registration_2.2.2_all.deb && dpkg -i waggle-bk-reverse-tunnel_2.3.2_all.deb
-#       args:
-#         executable: /bin/bash
-
-#     - name: Unconditionally reboot the machine with all defaults
-#       ansible.builtin.reboot:
 
 #     - name: Copy the Beekeeper known hosts public CA
 #       shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/ssh/ssh_known_hosts /etc/ssh/ssh_known_hosts && chmod 644 /etc/ssh/ssh_known_hosts
