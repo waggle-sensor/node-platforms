@@ -170,7 +170,7 @@
         mode: a-x 
 
     - name: Add enabled=0 to motd news file
-      shell: echo 'ENABLED=0' > /etc/default/motd-news
+      shell: echo 'ENABLED=0' > /etc/default/motd-news #could not find module that will replace all file content with new content
       args:
         executable: /bin/bash
 
@@ -316,24 +316,25 @@
         executable: /bin/bash
 
     - name: Stop docker
-      shell: service docker stop
-      args:
-        executable: /bin/bash
+      ansible.builtin.systemd:
+        name: docker
+        state: stopped
 
     - name: Move docker
-      shell: mv /var/lib/docker /media/plugin-data/
+      shell: mv /var/lib/docker /media/plugin-data/ #no built in module that will move files
       args:
         executable: /bin/bash
 
     - name: Create a symbolic link
-      shell: ln -s /media/plugin-data/docker/ /var/lib/docker
-      args:
-        executable: /bin/bash
-
+      ansible.builtin.file:
+        src: /media/plugin-data/docker/
+        dest: /var/lib/docker
+        state: link
+    
     - name: Start up docker
-      shell: service docker start
-      args:
-        executable: /bin/bash
+      ansible.builtin.systemd:
+        name: docker
+        state: started
 
 - name: Configure k3s to Use External Media
   hosts: all
