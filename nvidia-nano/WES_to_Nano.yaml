@@ -305,7 +305,6 @@
     - name: Unconditionally reboot the machine with all defaults
       ansible.builtin.reboot:
 
-
 - name: Configure Docker to use External Media
   hosts: all
   tasks:
@@ -399,10 +398,21 @@
         enabled: yes
         state: started
 
-    - name: Run Commands to rename hostname #the task is a work around will be changed later
-      shell: touch /etc/waggle/bk_key.pem && /usr/bin/waggle_node_hostname.py -n /etc/waggle/node-id && rm /etc/waggle/bk_key.pem
+# The bottom three tasks are a work around - will be changed later
+    - name: Create /etc/waggle/bk_key.pem file
+      ansible.builtin.file:
+        path: /etc/waggle/bk_key.pem
+        state: touch
+
+    - name: Run waggle node hostname python script
+      shell: /usr/bin/waggle_node_hostname.py -n /etc/waggle/node-id
       args:
         executable: /bin/bash
+
+    - name: Remove /etc/waggle/bk_key.pem file
+      ansible.builtin.file:
+        path: /etc/waggle/bk_key.pem
+        state: absent
 
 #Check if reboot is neccessary for hostname to change
     # - name: Unconditionally reboot the machine with all defaults
