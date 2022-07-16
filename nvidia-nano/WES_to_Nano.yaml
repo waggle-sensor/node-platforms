@@ -349,15 +349,41 @@
       fail: msg="k3s service is not found"
       when: k3s_service.stdout.find("inactive") == 0
 
-    - name: create the neccessary directories in the external media
-      shell: mkdir -p /media/plugin-data/k3s/etc/rancher && mkdir -p /media/plugin-data/k3s/kubelet && mkdir -p /media/plugin-data/k3s/rancher
-      args:
-        executable: /bin/bash
+    - name: Create etc/rancher directory if it does not exist
+      ansible.builtin.file:
+        path: /media/plugin-data/k3s/etc/rancher
+        state: directory
+        recurse: yes
 
-    - name: create symbolic links in the newly created directories
-      shell: ln -s /media/plugin-data/k3s/etc/rancher /etc/rancher && ln -s /media/plugin-data/k3s/kubelet /var/lib/kubelet && ln -s /media/plugin-data/k3s/rancher /var/lib/rancher
-      args:
-        executable: /bin/bash
+    - name: Create kubelet directory if it does not exist
+      ansible.builtin.file:
+        path: /media/plugin-data/k3s/kubelet
+        state: directory
+        recurse: yes
+
+    - name: Create k3s/rancher directory if it does not exist
+      ansible.builtin.file:
+        path: /media/plugin-data/k3s/rancher
+        state: directory
+        recurse: yes
+
+    - name: Create a etc/rancher symbolic link
+      ansible.builtin.file:
+        src: /media/plugin-data/k3s/etc/rancher
+        dest: /etc/rancher
+        state: link
+
+    - name: Create a kubelet symbolic link
+      ansible.builtin.file:
+        src: /media/plugin-data/k3s/kubelet
+        dest: /var/lib/kubelet
+        state: link
+
+    - name: Create a k3s/rancher symbolic link
+      ansible.builtin.file:
+        src: /media/plugin-data/k3s/rancher
+        dest: /var/lib/rancher
+        state: link
 
 
 - name: k3s Service Startup Customizations
