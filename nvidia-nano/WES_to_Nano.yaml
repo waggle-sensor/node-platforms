@@ -134,7 +134,6 @@
 - name: Remove Uneeded Items
   hosts: all
   tasks:
-
     - name: Remove packages
       ansible.builtin.apt:
         name: isc-dhcp-server, whoopsie
@@ -145,15 +144,45 @@
       ansible.builtin.apt:
         autoremove: yes
 
-    - name: Disable apt upgrade services
-      shell: systemctl disable apt-daily.service && systemctl disable apt-daily.timer && systemctl disable apt-daily-upgrade.service && systemctl disable apt-daily-upgrade.timer
+    - name: Disable apt-daily service
+      ansible.builtin.systemd:
+        name: apt-daily.service
+        enabled: no
+    
+    - name: Disable apt-daily timer
+      ansible.builtin.systemd:
+        name: apt-daily.timer
+        enabled: no
+
+    - name: Disable apt-daily-upgrade service
+      ansible.builtin.systemd:
+        name: apt-daily-upgrade.service
+        enabled: no 
+
+    - name: Disable apt-daily-upgrade timer
+      ansible.builtin.systemd:
+        name: apt-daily-upgrade.timer
+        enabled: no 
+
+    - name: Remove excutable permissions to update motd directory files
+      ansible.builtin.file:
+        path: /etc/update-motd.d/*
+        mode: a-x 
+
+    - name: Add enabled=0 to motd news file
+      shell: echo 'ENABLED=0' > /etc/default/motd-news
       args:
         executable: /bin/bash
 
-    - name: Disable the motd news updates
-      shell: chmod -x /etc/update-motd.d/* && echo 'ENABLED=0' > /etc/default/motd-news && systemctl disable motd-news.service && systemctl disable motd-news.timer
-      args:
-        executable: /bin/bash
+    - name: Disable motd news service
+      ansible.builtin.systemd:
+        name: motd-news.service
+        enabled: no
+
+    - name: Disable motd news timer
+      ansible.builtin.systemd:
+        name: motd-news.timer
+        enabled: no
 
 - name: Copy ROOTFS into the System
   hosts: all
@@ -269,11 +298,9 @@
         src: '{{ playbook_dir }}/ROOTFS/etc/NetworkManager/conf.d/99-connectivity.conf'
         dest: /etc/NetworkManager/conf.d/99-connectivity.conf
 
-
-   - name: Reload Daemon
-      shell: systemctl daemon-reload
-      args:
-        executable: /bin/bash
+    - name: Reload Daemon
+      ansible.builtin.systemd:
+        daemon_reload: yes
 
     - name: Unconditionally reboot the machine with all defaults
       ansible.builtin.reboot:
@@ -334,23 +361,20 @@
       shell: ln -s /media/plugin-data/k3s/etc/rancher /etc/rancher && ln -s /media/plugin-data/k3s/kubelet /var/lib/kubelet && ln -s /media/plugin-data/k3s/rancher /var/lib/rancher
       args:
         executable: /bin/bash
-#move enable after k3s customization
-    - name: Enable k3s
-      command: systemctl enable k3s.service
-      register: k3s_output
-
-    - name: Check for K3s Output
-      fail: msg="symlinks were not created"
-      when: k3s_output.stdout.find("Created") == 0
 
 
 - name: k3s Service Startup Customizations
   hosts: all
   tasks:
+    - name: Reload Daemon
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
     - name: Enable k3s Shutdown Service
-      shell: systemctl daemon-reload && systemctl enable waggle-k3s-shutdown
-      args:
-        executable: /bin/bash
+      ansible.builtin.systemd:
+        name: waggle-k3s-shutdown
+        enabled: yes
+        state: started
 
     - name: Run Commands to rename hostname #the task is a work around will be changed later
       shell: touch /etc/waggle/bk_key.pem && /usr/bin/waggle_node_hostname.py -n /etc/waggle/node-id && rm /etc/waggle/bk_key.pem
@@ -366,24 +390,16 @@
         path: /etc/waggle/k3s_config/pre-run.sh
         mode: a+x
 
+    - name: Enable k3s
+      ansible.builtin.systemd:
+        name: k3s.service
+        enabled: yes
+        state: started
+
 #remove test gpu access not needed
 - name: Test k3s and Docker's GPU Access
   hosts: all
   tasks:
-    - name: Register k3s service override
-      command: service k3s status && systemctl cat k3s
-      register: k3s_service_output
-
-    - name: Test lan and wan are connected before testing k3s service
-      fail:
-        msg="The k3s service failed make sure you have lan0 and wan0 connected. The ethernet dongle connected to a usb port
-        (this is what you connect the camera to) and your uplink (to network switch) plugged into the nano ethernet port."
-      when: ('7538 ExecStartPre=/usr/bin/nmcli conn up lan (code=exited, status=4)' in k3s_service_output.stdout)
-
-    - name: Test k3s service override
-      fail: msg="The k3s service failed"
-      when: not ('running' in k3s_service_output.stdout)
-
     - name: Register k3s Node
       command: kubectl get node
       register: k3s_node_output
@@ -452,10 +468,15 @@
         state: directory
         recurse: yes
 
-    - name: Enable the docker registry services
-      shell: systemctl daemon-reload && systemctl start waggle-registry-local.service && systemctl enable waggle-registry-local.service
-      args:
-        executable: /bin/bash
+    - name: Reload Daemon
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Enable waggle registry local service
+      ansible.builtin.systemd:
+        name: waggle-registry-local.service
+        enabled: yes
+        state: started
 
     - name: push and pull from local registry
       shell: docker pull ubuntu:latest && docker tag ubuntu:latest 10.31.81.1:5000/joe:latest && curl https://10.31.81.1:5000/v2/_catalog && docker push 10.31.81.1:5000/joe:latest
