@@ -309,13 +309,9 @@
 - name: Configure Docker to use External Media
   hosts: all
   tasks:
-    - name: Stop docker
-      shell: service docker stop
-      args:
-        executable: /bin/bash
-#Filesystem gets created when docker is started up
+#Filesystem gets created when docker's first command is ran
     - name: Start up docker to create filesystem
-      shell: service docker start
+      shell: docker --version
       args:
         executable: /bin/bash
 
@@ -505,10 +501,29 @@
   hosts: all
   tasks:
 
-    - name: Ensure that default ip route that is used actually has an Internet connection
-      shell: echo 'net.ipv4.conf.default.rp_filter = 2' >> /etc/sysctl.conf && echo 'net.ipv4.conf.all.rp_filter = 2' >> /etc/sysctl.conf
+    - name: Checking for 'net.ipv4.conf.default.rp_filter = 2' in /etc/sysctl.conf file
+      shell: cat /etc/sysctl.conf | grep 'net.ipv4.conf.default.rp_filter = 2' | wc -l
       args:
         executable: /bin/bash
+      register: sysctlconf_default_output
+
+    - name: Add line in /etc/sysctl.conf file
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.conf
+        line: "net.ipv4.conf.default.rp_filter = 2"
+      when: sysctlconf_default_output.stdout == "0"
+
+    - name: Checking for 'net.ipv4.conf.all.rp_filter = 2' in /etc/sysctl.conf file
+      shell: cat /etc/sysctl.conf | grep 'net.ipv4.conf.all.rp_filter = 2' | wc -l
+      args:
+        executable: /bin/bash
+      register: sysctlconf_all_output
+
+    - name: Add line in /etc/sysctl.conf file
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.conf
+        line: "net.ipv4.conf.all.rp_filter = 2"
+      when: sysctlconf_all_output.stdout == "0"
 
 #Note: the below instructions hard-code a static VSN. In the future we will want to generate a random VSN (NXXX where X is a [0-9A-Z]) (TODO)
 - name: Set the node friendly ID (VSN)
