@@ -1,2 +1,2 @@
 [nano]
-10.0.0.151
+192.168.1.105 ansible_user=root
