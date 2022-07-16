@@ -14,64 +14,84 @@
 - name: Set Up Extra Drive
   hosts: all
   tasks:
-    - name: Register disk var
-      command: lsblk
-      register: mydisk
-
-    - name: Check for sda
-      fail: msg="I could not find sda"
-      when: mydisk.stdout.find("sda") == 0
-
     - name: Clear the current partition table and create GPT table
-      shell: echo -e "g\nw" | fdisk --wipe always --wipe-partitions always /dev/sda
+      shell: echo -e "g\nw" | fdisk --wipe always --wipe-partitions always /dev/sda #Can't use parted module because it has issues clearing partitions in use
       args:
         executable: /bin/bash
 
-    - name: Make the SWAP partition (16GB SWAP)
+    - name: Reboot to clear old-partition table #this task helps clear the disk of all partitions to eliminate all errors dealing with 'partitions in use'
+      ansible.builtin.reboot:
+
+    - name: Make the SWAP partition (16GB SWAP) #Can't create swap partition with parted module so use shell command
       shell: echo -e "n\n1\n2048\n+16G\nt\n19\nw" | fdisk --wipe always --wipe-partitions always /dev/sda
       args:
         executable: /bin/bash
 
     - name: Make the overlayfs 32GB
-      ignore_errors: yes # ignore old-partition table still being used error
-      shell: echo -e "n\n\n\n+32G\nw" | fdisk --wipe always --wipe-partitions always /dev/sda
-      args:
-        executable: /bin/bash
-#To DO change this so that it doesn't ignore all errors
-#use built in module
-    - name: Make the plugin-data (the rest of the space)
-      ignore_errors: yes # ignore old-partition table still being used error
-      shell: echo -e "n\n\n\n\nw" | fdisk --wipe always --wipe-partitions always /dev/sda
-      args:
-        executable: /bin/bash
+      community.general.parted:
+        device: /dev/sda
+        number: 2
+        state: present
+        label: gpt
+        name: system-data
+        part_start: 17.2GB
+        part_end: 51.5GB
+        unit: GB
+        fs_type: ext4
 
-    - name: Use the new GPT table
-      shell: partprobe
-      args:
-        executable: /bin/bash
+    - name: Make the plugin-data (the rest of the space)
+      community.general.parted:
+        device: /dev/sda
+        number: 3
+        state: present
+        label: gpt
+        name: plugin-data
+        part_start: 51.5GB       
+        part_end: 100%
+        unit: GB
+        fs_type: ext4
 
     - name: Turn on the swap
       shell: mkswap /dev/sda1 -L ext-swap
       args:
         executable: /bin/bash
-#use built in module to edit fstab
+
+    - name: checking for swap in the startup partition file
+      shell: cat /etc/fstab | grep /dev/sda1 | wc -l
+      args:
+        executable: /bin/bash
+      register: swap_output
+
     - name: Put the swap in the startup partition file
-      shell: echo "/dev/sda1 swap swap defaults,nofail 0 0" >> /etc/fstab
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        line: "/dev/sda1 swap swap defaults,nofail 0 0"
+      when: swap_output.stdout == "0"
+
+    - name: checking for plugin-data in the startup partition file
+      shell: cat /etc/fstab | grep /dev/sda3 | wc -l
       args:
         executable: /bin/bash
+      register: pluginData_output
 
-    - name: Setup the overlayfs partition
-      shell: mkfs.ext4 /dev/sda2 && e2label /dev/sda2 system-data
-      args:
-        executable: /bin/bash
+    - name: Put plugin-data in the startup partition file
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        line: "/dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2"
+      when: pluginData_output.stdout == "0"
 
-    - name: Set the default mount of /media/plugin-data in the /etc/fstab
-      shell: mkfs.ext4 /dev/sda3 && e2label /dev/sda3 plugin-data && echo "/dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2" >> /etc/fstab
-      args:
-        executable: /bin/bash
+    # - name: Setup the overlayfs partition
+    #   shell: mkfs.ext4 /dev/sda2 && e2label /dev/sda2 system-data
+    #   args:
+    #     executable: /bin/bash
 
-    - name: Unconditionally reboot the machine with all defaults
-      ansible.builtin.reboot:
+    # - name: Set the default mount of /media/plugin-data in the /etc/fstab
+    #   shell: mkfs.ext4 /dev/sda3 && e2label /dev/sda3 plugin-data 
+    #   args:
+    #     executable: /bin/bash
+
+    # - name: Unconditionally reboot the machine with all defaults
+    #   ansible.builtin.reboot:
 
 - name: Install Tools
   hosts: all
@@ -88,34 +108,28 @@
         executable: /bin/bash
 
     - name: Install the waggle-nodeid tool
-      shell: wget https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb && dpkg -i waggle-nodeid_1.0.7_all.deb
-      args:
-        executable: /bin/bash
-  
-    - name: Install waggle-node-hostname #the tool is used for a work around to change the hostname 
-      shell: wget https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb && dpkg -i waggle-node-hostname_1.2.1_all.deb
-      args:
-        executable: /bin/bash
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb
 
+    - name: Install waggle-node-hostname #the tool is used for a work around to change the hostname 
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb
+  
     - name: Install waggle-commontools to read the config
-      shell: wget https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb && dpkg -i waggle-common-tools_1.0.0_all.deb
-      args:
-        executable: /bin/bash
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb
 
     - name: Install Internet sharing service # Install waggle common tools first it is depended on it
-      shell: wget https://github.com/waggle-sensor/waggle-internet-share/releases/download/v1.4.1/waggle-internet-share_1.4.1_all.deb && dpkg -i waggle-internet-share_1.4.1_all.deb
-      args:
-        executable: /bin/bash
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-internet-share/releases/download/v1.4.1/waggle-internet-share_1.4.1_all.deb
 
-    - name: download the registration and reverse tunnel services
-      shell: wget https://github.com/waggle-sensor/waggle-bk-registration/releases/download/v2.2.2/waggle-bk-registration_2.2.2_all.deb && wget https://github.com/waggle-sensor/waggle-bk-reverse-tunnel/releases/download/v2.3.2/waggle-bk-reverse-tunnel_2.3.2_all.deb
-      args:
-        executable: /bin/bash
+    - name: Install the registration service
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-bk-registration/releases/download/v2.2.2/waggle-bk-registration_2.2.2_all.deb
 
-    - name: install the registration and reverse tunnel services
-      shell: dpkg -i waggle-bk-registration_2.2.2_all.deb && dpkg -i waggle-bk-reverse-tunnel_2.3.2_all.deb
-      args:
-        executable: /bin/bash
+    - name: Install the reverse tunnel service
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-bk-reverse-tunnel/releases/download/v2.3.2/waggle-bk-reverse-tunnel_2.3.2_all.deb
 
 - name: Remove Uneeded Items
   hosts: all
@@ -439,7 +453,7 @@
         recurse: yes
 
     - name: Enable the docker registry services
-      shell: systemctl daemon-reload && systemctl start waggle-registry-local.service
+      shell: systemctl daemon-reload && systemctl start waggle-registry-local.service && systemctl enable waggle-registry-local.service
       args:
         executable: /bin/bash
 
