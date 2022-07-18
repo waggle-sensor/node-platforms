@@ -2,6 +2,10 @@
 - name: Check Jetpack version
   hosts: all
   tasks:
+    - name: Update repositories cache
+      ansible.builtin.apt:
+        update_cache: yes
+
     - name: Register jetpack version
       command: apt-cache show nvidia-jetpack
       register: jetpackVer
@@ -15,7 +19,6 @@
   tasks:
     - name: install helpful tools
       ansible.builtin.apt:
-        update_cache: yes
         pkg:
         - dnsutils
         - htop
