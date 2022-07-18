@@ -27,6 +27,11 @@ ARG NODE_ID=0000000000000001
 ARG BK_REGISTRATION_HOST=bk-sshd
 ARG BK_REGISTRATION_PORT=2201
 
+ENV VSN=${VSN} \
+    NODE_ID=${NODE_ID} \
+    BK_REGISTRATION_HOST=${BK_REGISTRATION_HOST} \
+    BK_REGISTRATION_PORT=${BK_REGISTRATION_PORT}
+
 RUN mkdir -p /etc/waggle && echo $VSN > /etc/waggle/vsn
 
 RUN ansible-playbook -i localhost, -c local ./waggle_os.yml \
