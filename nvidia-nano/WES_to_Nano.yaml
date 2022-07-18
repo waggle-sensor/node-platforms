@@ -1,5 +1,4 @@
 ---
-#break up && to seperate tasks
 - name: Check Jetpack version
   hosts: all
   tasks:
@@ -10,6 +9,44 @@
     - name: Test for Jetpack 4.4.1
       fail: msg="The wrong version of Jetpack was flashed. I want jetpack 4.4.1"
       when: not ('4.4.1' in jetpackVer.stdout)
+
+- name: Install Tools
+  hosts: all
+  tasks:
+    - name: install helpful tools
+      ansible.builtin.apt:
+        name: dnsutils, htop, iftop, iotop, jq, nmap, curl, python3-click, dnsmasq, exfat-fuse, exfat-utils
+        update_cache: yes
+        state: build-dep
+
+    - name: Install K3s via curl
+      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.20.2+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_CLUSTER_SECRET=4tX0DUZ0uQknRtVUAKjt sh -
+      args:
+        executable: /bin/bash
+
+    - name: Install the waggle-nodeid tool
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb
+
+    - name: Install waggle-node-hostname #the tool is used for a work around to change the hostname 
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb
+  
+    - name: Install waggle-commontools to read the config
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb
+
+    - name: Install Internet sharing service # Install waggle common tools first it is depended on it
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-internet-share/releases/download/v1.4.1/waggle-internet-share_1.4.1_all.deb
+
+    - name: Install the registration service
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-bk-registration/releases/download/v2.2.2/waggle-bk-registration_2.2.2_all.deb
+
+    - name: Install the reverse tunnel service
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-bk-reverse-tunnel/releases/download/v2.3.2/waggle-bk-reverse-tunnel_2.3.2_all.deb
 
 - name: Set Up Extra Drive
   hosts: all
@@ -61,80 +98,27 @@
       args:
         executable: /bin/bash
 
-    - name: checking for swap in the startup partition file
-      shell: cat /etc/fstab | grep /dev/sda1 | wc -l
-      args:
-        executable: /bin/bash
-      register: swap_output
+    - name: Put the swap in the startup partition file #table structure: /dev/sda1 swap swap defaults,nofail 0 0
+      ansible.posix.mount:
+        path: swap
+        src: /dev/sda1
+        fstype: swap
+        opts: defaults,nofail
+        dump: 0
+        passno: 0
+        state: present
+        boot: yes
 
-    - name: Put the swap in the startup partition file
-      ansible.builtin.lineinfile:
-        path: /etc/fstab
-        line: "/dev/sda1 swap swap defaults,nofail 0 0"
-      when: swap_output.stdout == "0"
-
-    - name: checking for plugin-data in the startup partition file
-      shell: cat /etc/fstab | grep /dev/sda3 | wc -l
-      args:
-        executable: /bin/bash
-      register: pluginData_output
-
-    - name: Put plugin-data in the startup partition file
-      ansible.builtin.lineinfile:
-        path: /etc/fstab
-        line: "/dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2"
-      when: pluginData_output.stdout == "0"
-
-    # - name: Setup the overlayfs partition
-    #   shell: mkfs.ext4 /dev/sda2 && e2label /dev/sda2 system-data
-    #   args:
-    #     executable: /bin/bash
-
-    # - name: Set the default mount of /media/plugin-data in the /etc/fstab
-    #   shell: mkfs.ext4 /dev/sda3 && e2label /dev/sda3 plugin-data 
-    #   args:
-    #     executable: /bin/bash
-
-    # - name: Unconditionally reboot the machine with all defaults
-    #   ansible.builtin.reboot:
-
-- name: Install Tools
-  hosts: all
-  tasks:
-    - name: install helpful tools
-      ansible.builtin.apt:
-        name: dnsutils, htop, iftop, iotop, jq, nmap, curl, python3-click, dnsmasq, 
-        update_cache: yes
-        state: build-dep
-
-    - name: Install K3s via curl
-      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.20.2+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_CLUSTER_SECRET=4tX0DUZ0uQknRtVUAKjt sh -
-      args:
-        executable: /bin/bash
-
-    - name: Install the waggle-nodeid tool
-      ansible.builtin.apt:
-        deb: https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb
-
-    - name: Install waggle-node-hostname #the tool is used for a work around to change the hostname 
-      ansible.builtin.apt:
-        deb: https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb
-  
-    - name: Install waggle-commontools to read the config
-      ansible.builtin.apt:
-        deb: https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb
-
-    - name: Install Internet sharing service # Install waggle common tools first it is depended on it
-      ansible.builtin.apt:
-        deb: https://github.com/waggle-sensor/waggle-internet-share/releases/download/v1.4.1/waggle-internet-share_1.4.1_all.deb
-
-    - name: Install the registration service
-      ansible.builtin.apt:
-        deb: https://github.com/waggle-sensor/waggle-bk-registration/releases/download/v2.2.2/waggle-bk-registration_2.2.2_all.deb
-
-    - name: Install the reverse tunnel service
-      ansible.builtin.apt:
-        deb: https://github.com/waggle-sensor/waggle-bk-reverse-tunnel/releases/download/v2.3.2/waggle-bk-reverse-tunnel_2.3.2_all.deb
+    - name: Put plugin-data in the startup partition file #table structure: /dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2
+      ansible.posix.mount:
+        path: /media/plugin-data
+        src: /dev/sda3
+        fstype: ext4
+        opts: defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target
+        dump: 0
+        passno: 2
+        state: mounted
+        boot: yes
 
 - name: Remove Uneeded Items
   hosts: all
