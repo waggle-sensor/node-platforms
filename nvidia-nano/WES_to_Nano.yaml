@@ -229,7 +229,7 @@
     - name: Copy directory /ROOTFS/etc/waggle to system
       ansible.builtin.copy:
         src: '{{ playbook_dir }}/ROOTFS/etc/waggle'
-        dest: /etc/waggle
+        dest: /etc
 
     - name: Configure the lan0 network interface to bind to 10.31.81.1
       ansible.builtin.copy:
@@ -257,12 +257,12 @@
     - name: Configure dnsmasq to create the device's internal 10.31.81.1/24 network by copying dnsmasq.service.d directory.
       ansible.builtin.copy:
         src: '{{ playbook_dir }}/ROOTFS/etc/systemd/system/dnsmasq.service.d'
-        dest: /etc/systemd/system/dnsmasq.service.d
+        dest: /etc
 
     - name: Set up k3s service override
       ansible.builtin.copy:
         src: '{{ playbook_dir }}/ROOTFS/etc/systemd/system/k3s.service.d'
-        dest: /etc/systemd/system/k3s.service.d
+        dest: /etc/systemd/system
 
     - name: Setup the local docker registry mirrors (as the k3s config uses them)
       ansible.builtin.copy:
