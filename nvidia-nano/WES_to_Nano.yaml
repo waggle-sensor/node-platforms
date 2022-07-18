@@ -15,9 +15,19 @@
   tasks:
     - name: install helpful tools
       ansible.builtin.apt:
-        name: dnsutils, htop, iftop, iotop, jq, nmap, curl, python3-click, dnsmasq, exfat-fuse, exfat-utils
         update_cache: yes
-        state: build-dep
+        pkg:
+        - dnsutils
+        - htop
+        - iftop
+        - iotop
+        - jq
+        - nmap
+        - curl
+        - python3-click
+        - dnsmasq
+        - exfat-fuse
+        - exfat-utils
 
     - name: Install K3s via curl
       shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.20.2+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_CLUSTER_SECRET=4tX0DUZ0uQknRtVUAKjt sh -
@@ -48,7 +58,7 @@
       ansible.builtin.apt:
         deb: https://github.com/waggle-sensor/waggle-bk-reverse-tunnel/releases/download/v2.3.2/waggle-bk-reverse-tunnel_2.3.2_all.deb
 
-- name: Set Up Extra Drive
+- name: Set Up Extra Drive # To set up drive it requires tools to be installed (exfat-fuse exfat-utils)
   hosts: all
   tasks:
     - name: Clear the current partition table and create GPT table
@@ -155,8 +165,10 @@
 
     - name: Remove excutable permissions to update motd directory files
       ansible.builtin.file:
-        path: /etc/update-motd.d/*
+        path: /etc/update-motd.d
+        state: directory
         mode: a-x 
+        recurse: yes
 
     - name: Add enabled=0 to motd news file
       shell: echo 'ENABLED=0' > /etc/default/motd-news #could not find module that will replace all file content with new content
@@ -448,9 +460,14 @@
 - name: Configure The Local Dev Docker Registry
   hosts: all
   tasks:
-    - name: apply 600 permissions to Local Dev Docker Registry domain key and crt
+    - name: apply 600 permissions to Local Dev Docker Registry domain crt
       ansible.builtin.file:
-        path: /etc/waggle/docker/certs/domain.*
+        path: /etc/waggle/docker/certs/domain.crt
+        mode: 0600
+
+    - name: apply 600 permissions to Local Dev Docker Registry domain key
+      ansible.builtin.file:
+        path: /etc/waggle/docker/certs/domain.key
         mode: 0600
 
     - name: Create local dev docker registry directory
@@ -520,8 +537,10 @@
     # Note: the device will auto-connect to a ssid: waggle / passwd: Why1Not@Waggle network now
     - name: Apply 600 permission to system-connections
       ansible.builtin.file:
-        path: /etc/NetworkManager/system-connections/*
+        path: /etc/NetworkManager/system-connections
+        state: directory
         mode: 0600
+        recurse: yes
 
 - name: Enable NetworkManager Connectivity checks
   hosts: all
