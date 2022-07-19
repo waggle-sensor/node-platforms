@@ -22,12 +22,12 @@ cp ./sage_registration_readonly sage_registration
 echo '@cert-authority' bk-api $(cat /etc/waggle/beekeeper_ca_key.pub | cut -f 1,2 -d ' ') > /etc/ssh/ssh_known_hosts
 
 # wait for the ssh sever
-while ! nc -z bk-sshd 2201; do
+while ! nc -z ${BK_REGISTRATION_HOST} ${BK_REGISTRATION_PORT}; do
   sleep 1
 done
 
 # cert-authority above did not work for some reason, thus we add the host server directly:
-ssh-keyscan -H -p 2201 bk-sshd >> /etc/ssh/ssh_known_hosts
+ssh-keyscan -H -p ${BK_REGISTRATION_PORT} ${BK_REGISTRATION_HOST} >> /etc/ssh/ssh_known_hosts
 
 # start sshd  (usually via systemd)
 mkdir -p /var/run/sshd
