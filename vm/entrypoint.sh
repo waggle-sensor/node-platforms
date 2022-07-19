@@ -19,7 +19,7 @@ cp ./sage_registration-cert.pub_readonly sage_registration-cert.pub
 cp ./sage_registration_readonly sage_registration
 
 # prepare ssh_known_hosts
-echo '@cert-authority' bk-api $(cat /etc/waggle/beekeeper_ca_key.pub | cut -f 1,2 -d ' ') > /etc/ssh/ssh_known_hosts
+echo '@cert-authority' ${BK_API_HOST} $(cat /etc/waggle/beekeeper_ca_key.pub | cut -f 1,2 -d ' ') > /etc/ssh/ssh_known_hosts
 
 # wait for the ssh sever
 while ! nc -z ${BK_REGISTRATION_HOST} ${BK_REGISTRATION_PORT}; do
