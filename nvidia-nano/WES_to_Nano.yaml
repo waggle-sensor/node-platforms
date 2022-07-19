@@ -457,33 +457,6 @@
         enabled: yes
         state: started
 
-#remove test gpu access not needed
-- name: Test k3s and Docker's GPU Access
-  hosts: all
-  tasks:
-    - name: Register k3s Node
-      command: kubectl get node
-      register: k3s_node_output
-
-    - name: Test k3s and run basic pod
-      fail: msg="The node status is not ready"
-      when: not ('Ready' in k3s_node_output.stdout)
-
-    - name: Test dnsmasq
-      shell: service dnsmasq status
-      args:
-        executable: /bin/bash
-
-    - name: Pull docker GPU stress test image
-      shell: docker pull waggle/gpu-stress-test:1.0.1
-      args:
-        executable: /bin/bash
-
-    - name: Test docker's gpu access
-      shell: docker run -it --rm --runtime nvidia --network host waggle/gpu-stress-test:1.0.1 -m 2
-      args:
-        executable: /bin/bash
-
 - name: Configure The Local Dev Docker Registry
   hosts: all
   tasks:
@@ -543,19 +516,6 @@
         name: waggle-registry-local.service
         enabled: yes
         state: started
-
-    - name: push and pull from local registry
-      shell: docker pull ubuntu:latest && docker tag ubuntu:latest 10.31.81.1:5000/joe:latest && curl https://10.31.81.1:5000/v2/_catalog && docker push 10.31.81.1:5000/joe:latest
-      args:
-        executable: /bin/bash
-
-    - name: Register local dev docker registry
-      command: curl https://10.31.81.1:5000/v2/_catalog
-      register: localdev_output
-
-    - name: Test the local dev docker registry
-      fail: msg="The local dev docker registry failed"
-      when: not ('joe' in localdev_output)
 
 - name: Add waggle hotspot support
   hosts: all
