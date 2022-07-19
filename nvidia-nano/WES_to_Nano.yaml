@@ -27,11 +27,6 @@
       args:
         executable: /bin/bash
 
-    - name: Unmount /dev/sda1 #Unmount this partition so that mkswap can run
-      ansible.posix.mount:
-        path: /dev/sda1
-        state: unmounted
-
     - name: Make the overlayfs 32GB
       community.general.parted:
         device: /dev/sda
@@ -65,6 +60,16 @@
       community.general.filesystem:
         fstype: ext4
         dev: /dev/sda3
+
+    - name: Unmount /dev/sda1 #Unmount this partition so that mkswap can run
+      ansible.posix.mount:
+        path: /dev/sda1
+        state: unmounted
+
+    # - name: Unmount /dev/sda1
+    #   shell: umount -l /dev/sda1 && umount -f /media
+    #   args:
+    #     executable: /bin/bash
 
     - name: Turn on the swap
       shell: mkswap /dev/sda1 -L ext-swap
@@ -216,13 +221,11 @@
       ansible.builtin.file:
         path: /var/log/journal
         state: directory
-        recurse: yes
 
     - name: Create journalctl config directory if it does not exist
       ansible.builtin.file:
         path: /etc/systemd/journald.conf.d
         state: directory
-        recurse: yes
 
     - name: add the journalctl config to configure journalctl to save historical logs
       ansible.builtin.copy:
@@ -270,7 +273,7 @@
     - name: Configure dnsmasq to create the device's internal 10.31.81.1/24 network by copying dnsmasq.service.d directory.
       ansible.builtin.copy:
         src: '{{ playbook_dir }}/ROOTFS/etc/systemd/system/dnsmasq.service.d'
-        dest: /etc
+        dest: /etc/systemd/system
 
     - name: Set up k3s service override
       ansible.builtin.copy:
@@ -315,9 +318,6 @@
     - name: Reload Daemon
       ansible.builtin.systemd:
         daemon_reload: yes
-
-    - name: Unconditionally reboot the machine with all defaults
-      ansible.builtin.reboot:
 
 - name: Configure Docker to use External Media
   hosts: all
@@ -412,7 +412,10 @@
         enabled: yes
         state: started
 
-# The bottom three tasks are a work around - will be changed later
+# The bottom five tasks are a work around - will be changed later
+    - name: Unconditionally reboot the machine with all defaults
+      ansible.builtin.reboot: # reboot to create /etc/waggle/node-id file from waggle-nodeid service
+
     - name: Create /etc/waggle/bk_key.pem file
       ansible.builtin.file:
         path: /etc/waggle/bk_key.pem
