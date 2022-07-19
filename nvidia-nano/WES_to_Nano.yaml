@@ -86,7 +86,8 @@
         passno: 0
         state: present
         boot: yes
-#The nano fails to start up because sda2 fails to mount or the file system check fails
+#The nano fails to start up because sda2 fails to mount
+#tried adding it to partition file and now it says file system check failed
     - name: Put system-data in the startup partition file #*temporary*
       ansible.posix.mount:
         path: /media/system-data
