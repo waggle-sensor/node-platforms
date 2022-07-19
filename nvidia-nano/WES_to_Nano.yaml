@@ -411,9 +411,11 @@
 - name: k3s Service Startup Customizations
   hosts: all
   vars_prompt:
+
     - name: Connect lan0
       prompt: Please connect your camera via the usb dongle for ethernet connection. When ready enter any character and press enter.
       private: no
+      
   tasks:
     - name: Reload Daemon
       ansible.builtin.systemd:
