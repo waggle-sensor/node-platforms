@@ -14,54 +14,7 @@
       fail: msg="The wrong version of Jetpack was flashed. I want jetpack 4.4.1"
       when: not ('4.4.1' in jetpackVer.stdout)
 
-- name: Install Tools
-  hosts: all
-  tasks:
-    - name: install helpful tools
-      ansible.builtin.apt:
-        pkg:
-        - dnsutils
-        - htop
-        - iftop
-        - iotop
-        - jq
-        - nmap
-        - curl
-        - python3-click
-        - dnsmasq
-        - exfat-fuse
-        - exfat-utils
-
-    - name: Install K3s via curl
-      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.20.2+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_CLUSTER_SECRET=4tX0DUZ0uQknRtVUAKjt sh -
-      args:
-        executable: /bin/bash
-
-    - name: Install the waggle-nodeid tool
-      ansible.builtin.apt:
-        deb: https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb
-
-    - name: Install waggle-node-hostname #the tool is used for a work around to change the hostname 
-      ansible.builtin.apt:
-        deb: https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb
-  
-    - name: Install waggle-commontools to read the config
-      ansible.builtin.apt:
-        deb: https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb
-
-    - name: Install Internet sharing service # Install waggle common tools first it is depended on it
-      ansible.builtin.apt:
-        deb: https://github.com/waggle-sensor/waggle-internet-share/releases/download/v1.4.1/waggle-internet-share_1.4.1_all.deb
-
-    - name: Install the registration service
-      ansible.builtin.apt:
-        deb: https://github.com/waggle-sensor/waggle-bk-registration/releases/download/v2.2.2/waggle-bk-registration_2.2.2_all.deb
-
-    - name: Install the reverse tunnel service
-      ansible.builtin.apt:
-        deb: https://github.com/waggle-sensor/waggle-bk-reverse-tunnel/releases/download/v2.3.2/waggle-bk-reverse-tunnel_2.3.2_all.deb
-
-- name: Set Up Extra Drive # To set up drive it requires tools to be installed (exfat-fuse exfat-utils)
+- name: Set Up Extra Drive
   hosts: all
   tasks:
     - name: Clear the current partition table and create GPT table
@@ -138,6 +91,53 @@
         passno: 2
         state: mounted
         boot: yes
+
+- name: Install Tools
+  hosts: all
+  tasks:
+    - name: install helpful tools
+      ansible.builtin.apt:
+        pkg:
+        - dnsutils
+        - htop
+        - iftop
+        - iotop
+        - jq
+        - nmap
+        - curl
+        - python3-click
+        - dnsmasq
+        # - exfat-fuse
+        # - exfat-utils
+
+    - name: Install K3s via curl
+      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.20.2+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_CLUSTER_SECRET=4tX0DUZ0uQknRtVUAKjt sh -
+      args:
+        executable: /bin/bash
+
+    - name: Install the waggle-nodeid tool
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb
+
+    - name: Install waggle-node-hostname #the tool is used for a work around to change the hostname 
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb
+  
+    - name: Install waggle-commontools to read the config
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb
+
+    - name: Install Internet sharing service # Install waggle common tools first it is depended on it
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-internet-share/releases/download/v1.4.1/waggle-internet-share_1.4.1_all.deb
+
+    - name: Install the registration service
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-bk-registration/releases/download/v2.2.2/waggle-bk-registration_2.2.2_all.deb
+
+    - name: Install the reverse tunnel service
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-bk-reverse-tunnel/releases/download/v2.3.2/waggle-bk-reverse-tunnel_2.3.2_all.deb
 
 - name: Remove Uneeded Items
   hosts: all
