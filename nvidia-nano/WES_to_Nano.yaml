@@ -122,12 +122,18 @@
         state: present
         boot: yes
 
+    - name: Create the /media/plugin-data directory
+      ansible.builtin.file:
+        path: /media/plugin-data
+        state: directory
+        recurse: yes
+
     - name: Put plugin-data in the startup partition file #table structure: /dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2
       ansible.posix.mount:
         path: /media/plugin-data
         src: /dev/sda3
         fstype: ext4
-        opts: defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target
+        opts: defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target,noauto
         dump: 0
         passno: 2
         state: mounted
@@ -418,9 +424,8 @@
         path: /etc/waggle/bk_key.pem
         state: absent
 
-#Check if reboot is neccessary for hostname to change
-    # - name: Unconditionally reboot the machine with all defaults
-    #   ansible.builtin.reboot:
+    - name: Unconditionally reboot the machine with all defaults # reboot is required for the hostname to change
+      ansible.builtin.reboot:
 
     - name: Configure k3s GPU access by applying executable permissions to pre-run.sh
       ansible.builtin.file: 
