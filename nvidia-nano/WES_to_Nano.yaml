@@ -87,10 +87,10 @@
         state: present
         boot: yes
 
-    - name: Create the /media/plugin-data directory
-      ansible.builtin.file:
-        path: /media/plugin-data
-        state: directory
+    # - name: Create the /media/plugin-data directory
+    #   ansible.builtin.file:
+    #     path: /media/plugin-data
+    #     state: directory
 
     - name: Put plugin-data in the startup partition file #table structure: /dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2
       ansible.posix.mount:
@@ -100,8 +100,11 @@
         opts: defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target
         dump: 0
         passno: 2
-        state: mounted
+        state: present
         boot: yes
+
+    - name: Unconditionally reboot the machine with all defaults
+      ansible.builtin.reboot: # reboot to mount sda3 (tried mounting without rebooting and kept running into errors)
 
 - name: Install Tools
   hosts: all
@@ -487,14 +490,14 @@
 
     - name: Create local dev docker registry directory
       ansible.builtin.file:
-        path: /etc/docker/certs.d/10.31.81.1\:5000/
+        path: /etc/docker/certs.d/10.31.81.1:5000
         state: directory
         recurse: yes
 
     - name: Copy domain crt to local dev docker registry directory
       ansible.builtin.copy:
         src: /etc/waggle/docker/certs/domain.crt
-        dest: /etc/docker/certs.d/10.31.81.1\:5000/
+        dest: /etc/docker/certs.d/10.31.81.1:5000/
         remote_src: yes
         mode: 0600
 
