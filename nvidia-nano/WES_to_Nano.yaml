@@ -22,9 +22,6 @@
       args:
         executable: /bin/bash
 
-    # - name: Reboot to clear old-partition table #this task helps clear the disk of all partitions to eliminate all errors dealing with 'partitions in use'
-    #   ansible.builtin.reboot:
-
     - name: Make the SWAP partition (16GB SWAP) #Can't create swap partition with parted module so use shell command
       shell: echo -e "n\n1\n2048\n+16G\nt\n19\nw" | fdisk --wipe always --wipe-partitions always /dev/sda
       args:
