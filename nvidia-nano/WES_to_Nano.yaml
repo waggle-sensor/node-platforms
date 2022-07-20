@@ -312,6 +312,11 @@
         src: '{{ playbook_dir }}/ROOTFS/etc/NetworkManager/conf.d/99-connectivity.conf'
         dest: /etc/NetworkManager/conf.d/99-connectivity.conf
 
+    - name: Add ssh known hosts to system
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/ssh/ssh_known_hosts'
+        dest: /etc/ssh/ssh_known_hosts
+
     - name: Reload Daemon
       ansible.builtin.systemd:
         daemon_reload: yes
