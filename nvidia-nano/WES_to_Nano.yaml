@@ -16,6 +16,12 @@
 
 - name: Set Up Extra Drive
   hosts: all
+  vars_prompt:
+
+    - name: Connect Drive
+      prompt: Please connect your usb drive to the nano. When ready enter any character and press enter.
+      private: no
+      
   tasks:
     - name: Clear the current partition table and create GPT table
       shell: echo -e "g\nw" | fdisk --wipe always --wipe-partitions always /dev/sda #Can't use parted module because it has issues clearing partitions in use
