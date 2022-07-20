@@ -40,9 +40,8 @@
         state: present
         label: gpt
         name: system-data
-        part_start: 17.2GB
-        part_end: 51.5GB
-        unit: GB
+        part_start: 33556480s #s = sectors
+        part_end: 100665343s 
         fs_type: ext4
 
     - name: Make the plugin-data (the rest of the space)
@@ -52,15 +51,14 @@
         state: present
         label: gpt
         name: plugin-data
-        part_start: 51.5GB       
+        part_start: 100665344s  
         part_end: 100%
-        unit: GB
         fs_type: ext4
 
-    # - name: Create a ext4 filesystem on /dev/sda2
-    #   community.general.filesystem:
-    #     fstype: ext4
-    #     dev: /dev/sda2
+    - name: Create a ext4 filesystem on /dev/sda2
+      community.general.filesystem:
+        fstype: ext4
+        dev: /dev/sda2
 
     - name: Create a ext4 filesystem on /dev/sda3
       community.general.filesystem:
@@ -92,18 +90,6 @@
         passno: 0
         state: present
         boot: yes
-#The nano fails to start up because sda2 fails to mount
-#tried adding it to partition file and now it says file system check failed
-    # - name: Put system-data in the startup partition file #*temporary*
-    #   ansible.posix.mount:
-    #     path: /media/system-data
-    #     src: /dev/sda2
-    #     fstype: ext4
-    #     opts: defaults,nofail
-    #     dump: 0
-    #     passno: 2
-    #     state: present
-    #     boot: yes
 
     - name: Put plugin-data in the startup partition file #table structure: /dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2
       ansible.posix.mount:
