@@ -70,11 +70,6 @@
         path: /dev/sda1
         state: unmounted
 
-    # - name: Unmount /dev/sda1
-    #   shell: umount -l /dev/sda1 && umount -f /media
-    #   args:
-    #     executable: /bin/bash
-
     - name: Turn on the swap
       shell: mkswap /dev/sda1 -L ext-swap
       args:
