@@ -1,2 +1,2 @@
 [nano]
-10.0.0.176 ansible_user=root
+130.202.141.76 ansible_user=root ansible_password=waggle
