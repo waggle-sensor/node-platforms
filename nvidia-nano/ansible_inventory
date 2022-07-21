@@ -1,2 +1,2 @@
 [nano]
-10.0.0.151
+{ip} ansible_user=root
