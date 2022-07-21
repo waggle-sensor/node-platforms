@@ -1,2 +1,2 @@
 [nano]
-{ip} ansible_user=root ansible_password=waggle
+{ip} ansible_user=root
