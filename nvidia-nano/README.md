@@ -542,6 +542,7 @@ The black wire should connect to the ground pin and the red wire should connect 
 - install and have the Nano's use the wan-tunnel to route all Internet traffice through beekeeper
 - figure out how to generate a random VSN
   - NXXX where X is a random value between [0-9A-Z]
+- turn the BME instructions into an ansible script
 
 ### Optional / research / unknown
 - update the instructions for creating a "dummy" user on install and then adding the creation of the `waggle` user in the Ansible script so that it can be updated and easily versioned (instead of relying on the initial creation).  can tie this into sudoers access for `waggle` etc.
@@ -573,4 +574,5 @@ The black wire should connect to the ground pin and the red wire should connect 
   └─sda3         8:3    1 428.3G  0 part /media/df5990dc-414c-4aa4-975d-774bc8811a8a
   ```
   - auto-mount problem (see: `systemctl --failed`)
+  - How to detect which nano is whose? how will you do this? imagine a class setting with many nanos being configured
   
