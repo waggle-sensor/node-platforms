@@ -564,27 +564,34 @@
       debug: 
         msg: "Node ID: {{Node_ID}}"
 
+- name: Register node and establish connection to Beehive
+  hosts: all
+  vars_prompt:
 
-
-                                  ###### waiting on website to be build ########
-# - name: Register node and establish connection to Beehive
-#   hosts: all
-  # vars_prompt:
-
-    # - name: Nano_key
-    #   prompt: Please enter your key you received from the website
-    #   private: no
+    - name: Node Registration
+      prompt: Please register your node in website.com, when you are finish you will receive registration.zip. Place registration.zip in the same location this playbook is sitting in (i.e. /node-platforms/nvidia-nano/). When you are done press enter
+      private: no
     
-#   tasks:
+  tasks:
 
-#     - name: Copy the Beekeeper known hosts public CA
-#       shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/ssh/ssh_known_hosts /etc/ssh/ssh_known_hosts && chmod 644 /etc/ssh/ssh_known_hosts
-#       args:
-#         executable: /bin/bash
+    - name: Copy the Beekeeper known hosts public CA
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/ROOTFS/etc/ssh/ssh_known_hosts'
+        dest: /etc/ssh/ssh_known_hosts
+        mode: 0644
 
-# # note: this file is not checked into the code at this time, need to triple-check its safe to do so. (TODO)
-#     # - name: Copy registration private key
-#     #   shell: cp -r /platforms/nvidia-nano/ROOTFS/etc/waggle/sage_registration /etc/waggle/sage_registration && chmod 600 /etc/waggle/sage_registration
-#     #   args:
-#     #     executable: /bin/bash
+    - name: Enable waggle admin reverse tunnel access
+      ansible.builtin.blockinfile:
+        marker: "# <-- {mark} ANSIBLE MANAGED BLOCK - Enable Waggle Admin Reverse Tunnel Access -->"
+        path: /root/.ssh/authorized_keys
+        block: "{{ lookup('ansible.builtin.file', '{{ playbook_dir }}/ROOTFS/root/.ssh/authorized_keys.prod') }}"
+    
+    - name: Unzip registration files into the node
+      ansible.builtin.unarchive:
+        src: '{{ playbook_dir }}/registration.zip'
+        dest: /etc/waggle
+        mode: 0600
 
+    - name: Conclusion
+      debug: 
+        msg: "The node is now configured for WES. Give the node a couple of minutes to register. After registration, the Beehive should automatically push WES to the node and start running its pods"
