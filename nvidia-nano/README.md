@@ -15,7 +15,7 @@ Contains the specific instructions and `ansible` playbook for the NVidia Nano No
 
 
 ## Hardware needed
- - NVIDIA Jetson Nano, DC power supply, barrel to set the jumper next to barrel connector to use barrel power, uSD memory cards, SD card reader, etc.
+ - [NVIDIA Jetson Nano](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-nano/), DC power supply, barrel to set the jumper next to barrel connector to use barrel power, uSD memory cards, SD card reader, etc.
  - 5 pin USB cable
  - network switch
  - Sensors: camera, microphone, & BME680.
