@@ -255,7 +255,7 @@ Now let's setup `root` SSH access
 
 Ansible should now bet set up to run the playbook that will configure your nano to run Waggle Edge Stack (WES). In the `~/node-platforms/nvidia-nano` directory, run this command to start the playbook
 ```
-ansible-playbook -i ansible_inventory GiveMeWES.yaml 
+ansible-playbook -i ansible_inventory 01_ansible_nvidia-nano_base.yaml 
 ```
 
 Stuff to keep in mind while the ansible script runs:
