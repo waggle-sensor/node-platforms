@@ -1,2 +1,6 @@
 [nano]
-{ip} ansible_user=root
+{ip}
+
+[nano:vars]
+ansible_user=root
+ext_drive_dev=/dev/sda
