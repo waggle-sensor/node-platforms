@@ -22,82 +22,103 @@
       private: no
 
   tasks:
+    - name: Read {{ ext_drive_dev }} device information
+      parted: device="{{ ext_drive_dev }}" unit=MiB
+      register: sda_info
+
+    - name: Disable {{ ext_drive_dev }} swap partitions
+      shell: swapoff {{ ext_drive_dev }}{{ item.num }}
+      args:
+        executable: /bin/bash
+      loop: "{{ sda_info.partitions }}"
+      when: item.fstype is search("linux-swap")
+
+    # TODO: figure out how to disable auto-mount which causes this to fail
+    - name: Remove all partitions from {{ ext_drive_dev }}
+      parted:
+        device: "{{ ext_drive_dev }}"
+        number: "{{ item.num }}"
+        state: absent
+      loop: "{{ sda_info.partitions }}"
+
     - name: Clear the current partition table and create GPT table
-      shell: echo -e "g\nw" | fdisk --wipe always --wipe-partitions always /dev/sda #Can't use parted module because it has issues clearing partitions in use
+      shell: >
+        (echo "g";
+         sleep 5s;
+         echo "w"
+        ) | fdisk --wipe always --wipe-partitions always {{ ext_drive_dev }}
       args:
         executable: /bin/bash
 
-    - name: Make the SWAP partition (16GB SWAP) #Can't create swap partition with parted module so use shell command
-      shell: echo -e "n\n1\n2048\n+16G\nt\n19\nw" | fdisk --wipe always --wipe-partitions always /dev/sda
+    - name: Create swap partition
+      shell: >
+        (echo "n";
+         echo "{{ item.num }}";
+         echo "";
+         echo "{{ item.lsector }}";
+         echo "t";
+         echo "{{ item.type }}";
+         sleep 5s;
+         echo "w"
+        ) | fdisk --wipe always --wipe-partitions always {{ ext_drive_dev }}
+      args:
+        executable: /bin/bash
+      with_items:
+        - { num: 1, lsector: +16G, type: 19 }
+
+    - name: Create drive partitions
+      shell: >
+        (echo "n";
+         echo "{{ item.num }}";
+         echo "";
+         echo "{{ item.lsector }}";
+         sleep 5s;
+         echo "w"
+        ) | fdisk --wipe always --wipe-partitions always {{ ext_drive_dev }}
+      args:
+        executable: /bin/bash
+      with_items:
+        - { num: 2, lsector: +32G}
+        - { num: 3, lsector: ""}
+
+    - name: Format the swap partition
+      shell: mkswap {{ ext_drive_dev }}1 -L ext-swap
       args:
         executable: /bin/bash
 
-    - name: Make the overlayfs 32GB
-      community.general.parted:
-        device: /dev/sda
-        number: 2
-        state: present
-        label: gpt
-        name: system-data
-        part_start: 33556480s #s = sectors
-        part_end: 100665343s
-        fs_type: ext4
-
-    - name: Make the plugin-data (the rest of the space)
-      community.general.parted:
-        device: /dev/sda
-        number: 3
-        state: present
-        label: gpt
-        name: plugin-data
-        part_start: 100665344s
-        part_end: 100%
-        fs_type: ext4
-
-    - name: Create a ext4 filesystem on /dev/sda2
+    - name: Format (ext4) the drive partitions
       community.general.filesystem:
         fstype: ext4
-        dev: /dev/sda2
+        force: yes
+        dev: "{{ ext_drive_dev }}{{ item.num }}"
+      with_items:
+        - { num: 2 }
+        - { num: 3 }
 
-    - name: Create a ext4 filesystem on /dev/sda3
-      community.general.filesystem:
-        fstype: ext4
-        dev: /dev/sda3
-
-    - name: Unmount /dev/sda1 #Unmount this partition so that mkswap can run
-      ansible.posix.mount:
-        path: /dev/sda1
-        state: unmounted
-
-    - name: Turn on the swap
-      shell: mkswap /dev/sda1 -L ext-swap
+    - name: Label the partitions
+      shell: e2label {{ ext_drive_dev }}{{ item.num }} {{ item.label }}
       args:
         executable: /bin/bash
+      with_items:
+        - { num: 2, label: system-data }
+        - { num: 3, label: plugin-data }
 
-    - name: Put the swap in the startup partition file #table structure: /dev/sda1 swap swap defaults,nofail 0 0
+    - name: Populate the fstab file
       ansible.posix.mount:
-        path: swap
-        src: /dev/sda1
-        fstype: swap
-        opts: defaults,nofail
-        dump: 0
-        passno: 0
+        path: "{{ item.path }}"
+        src: "{{ ext_drive_dev }}{{ item.num }}"
+        fstype: "{{ item.fstype }}"
+        opts: "{{ item.opts }}"
+        dump: "0"
+        passno: "{{ item.passno }}"
         state: present
         boot: yes
+      with_items:
+        - { num: 1, path: "swap", fstype: swap, opts: "defaults,nofail", passno: "0" }
+        - { num: 3, path: "/media/plugin-data", fstype: ext4, opts: "defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target", passno: "2" }
 
-    - name: Put plugin-data in the startup partition file #table structure: /dev/sda3 /media/plugin-data ext4 defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target 0 2
-      ansible.posix.mount:
-        path: /media/plugin-data
-        src: /dev/sda3
-        fstype: ext4
-        opts: defaults,nofail,x-systemd.after=local-fs-pre.target,x-systemd.before=local-fs.target
-        dump: 0
-        passno: 2
-        state: present
-        boot: yes
-
-    - name: Unconditionally reboot the machine with all defaults
-      ansible.builtin.reboot: # reboot to mount sda3 (tried mounting without rebooting and kept running into errors)
+    - name: Unconditionally reboot the machine to mount partitions
+      ansible.builtin.reboot:
 
 - name: Install Tools
   hosts: all
