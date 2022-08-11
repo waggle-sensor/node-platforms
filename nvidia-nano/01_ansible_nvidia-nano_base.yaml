@@ -86,7 +86,7 @@
       args:
         executable: /bin/bash
 
-    - name: Format (ext4) the drive partitions
+    - name: Format (ext4) drive partitions
       community.general.filesystem:
         fstype: ext4
         force: yes
@@ -206,7 +206,7 @@
         recurse: yes
 
     - name: Add enabled=0 to motd news file
-      shell: echo 'ENABLED=0' > /etc/default/motd-news #could not find module that will replace all file content with new content
+      shell: echo 'ENABLED=0' > /etc/default/motd-news
       args:
         executable: /bin/bash
 
@@ -356,7 +356,7 @@
         state: stopped
 
     - name: Move docker
-      shell: mv /var/lib/docker /media/plugin-data/ #no built in module that will move files
+      shell: mv /var/lib/docker /media/plugin-data/
       args:
         executable: /bin/bash
 
@@ -374,41 +374,35 @@
 - name: Configure k3s to Use External Media
   hosts: all
   tasks:
-    - name: Create etc/rancher directory if it does not exist
+    - name: Create external media directories
       ansible.builtin.file:
-        path: /media/plugin-data/k3s/etc/rancher
+        path: "{{ item.path }}"
         state: directory
         recurse: yes
+      with_items:
+        - { path: "/media/plugin-data/k3s/etc/rancher" }
+        - { path: "/media/plugin-data/k3s/kubelet" }
+        - { path: "/media/plugin-data/k3s/rancher" }
 
-    - name: Create kubelet directory if it does not exist
+    - name: Ensure symlink destinations don't exist
       ansible.builtin.file:
-        path: /media/plugin-data/k3s/kubelet
-        state: directory
-        recurse: yes
+        path: "{{ item.path }}"
+        state: absent
+      with_items:
+        - { path: "/etc/rancher" }
+        - { path: "/var/lib/kubelet" }
+        - { path: "/var/lib/rancher" }
 
-    - name: Create k3s/rancher directory if it does not exist
+    - name: Create external media symlinks
       ansible.builtin.file:
-        path: /media/plugin-data/k3s/rancher
-        state: directory
-        recurse: yes
-
-    - name: Create a etc/rancher symbolic link
-      ansible.builtin.file:
-        src: /media/plugin-data/k3s/etc/rancher
-        dest: /etc/rancher
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        force: yes
         state: link
-
-    - name: Create a kubelet symbolic link
-      ansible.builtin.file:
-        src: /media/plugin-data/k3s/kubelet
-        dest: /var/lib/kubelet
-        state: link
-
-    - name: Create a k3s/rancher symbolic link
-      ansible.builtin.file:
-        src: /media/plugin-data/k3s/rancher
-        dest: /var/lib/rancher
-        state: link
+      with_items:
+        - { src: "/media/plugin-data/k3s/etc/rancher", dest: "/etc/rancher" }
+        - { src: "/media/plugin-data/k3s/kubelet", dest: "/var/lib/kubelet" }
+        - { src: "/media/plugin-data/k3s/rancher", dest: "/var/lib/rancher" }
 
 - name: k3s Service Startup Customizations
   hosts: all
