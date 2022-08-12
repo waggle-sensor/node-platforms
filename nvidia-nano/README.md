@@ -13,7 +13,6 @@ Contains the specific instructions and `ansible` playbook for the NVidia Nano No
 7. Configuring the Sensors
 8. To Do(s) for Dev Team
 
-
 ## Hardware needed
  - [NVIDIA Jetson Nano](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-nano/), DC power supply, barrel to set the jumper next to barrel connector to use barrel power, uSD memory cards, SD card reader, etc.
  - 5 pin USB cable
@@ -525,54 +524,3 @@ The black wire should connect to the ground pin and the red wire should connect 
         3. Give execution permission to the file `chmod +x /etc/rc.local`
 
 14. Reboot and on startup run steps 11 & 12 again to see if the BME680 sensor is set up on boot
-
-## To Do(s) for Dev Team
-
-### currently working on
-- enable the overlayfs (this may need to be done before registration completes)
-  - its okay if the registration cert exists on the read-only partition, as its timed anyway and not a big secret
-
-### later
-- we need the `ip_set` kernel modules maybe
-- check service startup order (svg) to confirm its all good
-- get microphone running and wes configued to set the nano core as the node running the audio-server
-- the camera will have an IP in the range of 10.31.81.10 - 19. do we want to set the Amcrest camera to a static IP (i.e. 10.31.8.20 ) ?
-  - we also need to figure out how to connect the camera to pyWaggle / WES. we don't want to have to run the "camera provisioner"
-- add version to `/etc/waggle_version_os`
-- install and have the Nano's use the wan-tunnel to route all Internet traffice through beekeeper
-- figure out how to generate a random VSN
-  - NXXX where X is a random value between [0-9A-Z]
-- turn the BME instructions into an ansible script
-
-### Optional / research / unknown
-- update the instructions for creating a "dummy" user on install and then adding the creation of the `waggle` user in the Ansible script so that it can be updated and easily versioned (instead of relying on the initial creation).  can tie this into sudoers access for `waggle` etc.
-  - this may not be necessary as the user can operate as `root` on the node, and we should encourage that.
-- (optional) create /var/lib/nvpmodel/status file to set the default operating mode and fmode (fan mode) to `cool`
-  - it seems that `cool` is not allowed.  so need to figure out what fan modes ARE supported, if any
-- figure out if we want to allow `root` user to be able to login with ssh with password or not??
-- the first time the external drive enumerated as `sdb` instead of `sda`, why?  we need to make sure this is consistent
-- remove `dhcpd` service from running (its not running on a WSN)
-- we _may_ not need the sage and docker.io mirror, as they just take up additional space and maybe take longer. there are no k3s agents to take advantage of the mirrors
-  - plus this assumes a sagecontinuum.org ECR which we dont need to assume
-- remove the X server and other gui elements that take up a alot of space/resources
-  - this also includes extras that NVidia put in there (examples maybe?)
-- some basic unit test / sanity test / health script to ensure the device is healthy (see the waggle-sanity-check - for the students)
-  - check lan IP 
-  - check k3s is running
-  - check docker is running
-  - check docker mirrors working
-  - check internet connection
-- update the MOTD to point out the url to go for registration
-- add support for RPI PxE booting, to allow for an easy downstream "agent"
-  - this also requires the fix to allow the rpi to use the local docker registry on the core (TBD)
-- add a Ansible script for configuring the Nano to operate as an "agent" instead of a "core"
-  - this includes the required ssh key access to be able to ssh to the agents from the core (for admin stuff)
-  - this includes the local docker registry access
-- the `lsblk` is showing up as, why does it have the UUID in it?
-  ```
-  ├─sda2         8:2    1    16G  0 part /media/1aef5c37-a088-4343-9a55-530d68442109
-  └─sda3         8:3    1 428.3G  0 part /media/df5990dc-414c-4aa4-975d-774bc8811a8a
-  ```
-  - auto-mount problem (see: `systemctl --failed`)
-  - How to detect which nano is whose? how will you do this? imagine a class setting with many nanos being configured
-  
