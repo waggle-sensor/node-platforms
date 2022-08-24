@@ -17,6 +17,11 @@ Build:
 docker build -t waggle/vm-minimal .
 ```
 
+Build with different build-args:
+```
+docker build --build-arg VSN="vsn2" --build-arg NODE_ID="0000000000000002" --build-arg BK_REGISTRATION_HOST="bk-sshd" --build-arg BK_REGISTRATION_PORT="2201" -t waggle/vm-minimal .
+```
+
 To run the vm-minimal container, we need to override the CMD for the container since we do not have any beekeeper SSH keys present for this mode.
 ```
 docker run -d --name vm-minimal --entrypoint '/bin/sh' waggle/vm-minimal -c '/bin/sleep infinity'

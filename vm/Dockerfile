@@ -22,8 +22,17 @@ WORKDIR /ansible
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
-ARG VSN=TEST-minimal
+ARG VSN=TEST-MINIMAL
 ARG NODE_ID=0000000000000001
+ARG BK_API_HOST=bk-api
+ARG BK_REGISTRATION_HOST=bk-sshd
+ARG BK_REGISTRATION_PORT=2201
+
+ENV VSN=${VSN} \
+    NODE_ID=${NODE_ID} \
+    BK_API_HOST=${BK_API_HOST} \
+    BK_REGISTRATION_HOST=${BK_REGISTRATION_HOST} \
+    BK_REGISTRATION_PORT=${BK_REGISTRATION_PORT}
 
 RUN mkdir -p /etc/waggle && echo $VSN > /etc/waggle/vsn
 
@@ -35,8 +44,8 @@ RUN ansible-playbook -i localhost, -c local ./waggle_os.yml \
     -e install_k3s=no
 
 RUN ansible-playbook -i localhost, -c local ./waggle_config.yml \
-    -e beekeeper_registration_host=bk-sshd \
-    -e beekeeper_registration_port=2201 \
+    -e beekeeper_registration_host=$BK_REGISTRATION_HOST \
+    -e beekeeper_registration_port=$BK_REGISTRATION_PORT \
     -e node_id=$NODE_ID \
     -e check_k3s=no \
     -e copy_k8s_resource_files=no
