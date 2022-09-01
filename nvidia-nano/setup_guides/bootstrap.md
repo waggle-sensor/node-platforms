@@ -20,14 +20,14 @@ This guide will instruct on how to install JetPack SDK 4.4.1, turn on the nano, 
 
 3. Insert the microSD card into the Nano
     1. The microSD card slot is located on the underside of the Nano
-    <img src='/images/SD-card-loc.jpg' alt='sd card location' width="800">
+    <img src='./images/SD-card-loc.jpg' alt='sd card location' width="800">
   
 4. Jumper the J48 Power Selector Header Pins  
     1. Pins not jumpered (notice how one of the pins is exposed and not covered by the jumper):  
-  <img src='/images/non-jumpered.jpeg' alt='No jumper' width='800'>
+  <img src='./images/non-jumpered.jpeg' alt='No jumper' width='800'>
   
     2. Pins Jumpered (both pins covered by jumper):
-  <img alt='Jumpered Image'  src='/images/jumpered.jpeg' width='800'>
+  <img alt='Jumpered Image'  src='./images/jumpered.jpeg' width='800'>
 
 5. ***Recommended*** Connect the network switch
 
@@ -38,7 +38,7 @@ This guide will instruct on how to install JetPack SDK 4.4.1, turn on the nano, 
 6. Connect your computer to the Nano via it's micro USB port
   
 7. Follow step 9 on <a href="https://developer.nvidia.com/embedded/learn/get-started-jetson-nano-devkit#setup-headless">Nvidia's website</a> to set up the Nano according to your operating system
-<img alt='welcome' src='/images/welcome.jpeg' width='800'>
+<img alt='welcome' src='./images/welcome.jpeg' width='800'>
 
 1. Once you are connected to the nano go through the initial set up
    >Note: you can navigate the serial UI with the arrow keys and "enter/return" button on your keyboard
