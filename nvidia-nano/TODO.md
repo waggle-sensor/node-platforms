@@ -8,46 +8,48 @@ This is an organized list of the items that are left to complete for the Nvidia 
    - move the images to a sub-folder
    - minimize the README to make it less scary
    - Break the README into "sections" that link off to other guides ("hardware setup", "flashing the SD card", "running the Ansible script", "Verify / Test Nano")
+   - Copy over hardware from SageEdu repo
+   - Add more details to the [hardware list](./bom.md) and keep it up-to-date. Also label them with pictures, so it's easier to connect the hardware
 
-1. Tech items to fix in the Ansible script
+2. Tech items to fix in the Ansible script
    - update the docker part to delete all pre-existing docker images (rm docker folder) and always create a new empty one to start from
    - combine networkmanager items into 1 with_items. remove the extra permissions apply to the NetworkManager folder
    - when combining all the files from ROOTFS and setting specific permissions, we can loop the permissions in the next step with_items to ensure they are correct
    - update the /etc/sysctl.conf check for the rp_filter to use a "in file" ansible command to ensure it is there. use `blockinfile` ansible builtin
    - make the default/motd-news a ROOTFS file
 
-1. Change how the 'hosts: all" works. we only want to do this for nano hosts.  and then we can have a nano-agent host?  i dont know quite yet how we want to do this.
+3. Change how the 'hosts: all" works. we only want to do this for nano hosts.  and then we can have a nano-agent host?  i dont know quite yet how we want to do this.
     - reference: https://github.com/NVIDIA/cloud-native-core/blob/master/playbooks/guides/Jetson_Xavier_v7.0.md#using-the-ansible-playbooks
 
-1. Update the `inventory` file to use a username / password instead of needing a user to create a `ssh` key-pair and do all the hacking of getting the key onto the device.
+4. Update the `inventory` file to use a username / password instead of needing a user to create a `ssh` key-pair and do all the hacking of getting the key onto the device.
     - See below: we could have the `setup.sh` script do alot of this. Create a ssh key-pair, execute `ssh copy-id` to the node (using the known user/password), and then run the playbook
     - reference: https://github.com/NVIDIA/cloud-native-core/blob/master/playbooks/guides/Jetson_Xavier_v7.0.md#using-the-ansible-playbooks
 
-1. Create a `setup.sh` script takes arguments (i.e. node IP address), configures the inventory file and runs the `ansible-playbook`
+5. Create a `setup.sh` script takes arguments (i.e. node IP address), configures the inventory file and runs the `ansible-playbook`
    - Can also optionally install `ansible` to the user's host machine and do some other "connection tests"
    - reference: https://github.com/NVIDIA/cloud-native-core/blob/master/playbooks/setup.sh
 
-1. Split the Ansible script into different grouped parts that be eventually imported into other platforms.  Need to consider 'core' vs 'agent' here
+6. Split the Ansible script into different grouped parts that be eventually imported into other platforms.  Need to consider 'core' vs 'agent' here
     - Docker section, k3s section, docker local registry section, waggle apps section, etc.
     - reference: https://github.com/NVIDIA/cloud-native-core/blob/master/playbooks/cnc-installation.yaml
 
-1. `/etc/resolv.conf` on the 'core' should be `127.0.0.53`.  Need to be sure this is the case. On 1 node, this was `127.0.0.1` and I think it was being managed by `resolvconf`.  This `resolvconf` service exists, and it does not on the WWN so it should probably be removed.
+7. `/etc/resolv.conf` on the 'core' should be `127.0.0.53`.  Need to be sure this is the case. On 1 node, this was `127.0.0.1` and I think it was being managed by `resolvconf`.  This `resolvconf` service exists, and it does not on the WWN so it should probably be removed.
 
-1. Figure out how to generate a random VSN. NXXX where X is a random value between [0-9A-Z]
+8. Figure out how to generate a random VSN. NXXX where X is a random value between [0-9A-Z]
 
-1. Update the Ansible script with the URL to go-to for registration.
+9. Update the Ansible script with the URL to go-to for registration.
 
-1. Figure out how to Ansible flash a `sda` usb drive that already has partitions on it. Figure out how to disable "auto-mount" which seems to be messing things up (see: `systemctl --failed`).
+10. Figure out how to Ansible flash a `sda` usb drive that already has partitions on it. Figure out how to disable "auto-mount" which seems to be messing things up (see: `systemctl --failed`).
 
-1.  Add microphone support. WES needs to be configured to detect the microphone and run the audio-server on the k3s node that contains the microphone.
+11. Add microphone support. WES needs to be configured to detect the microphone and run the audio-server on the k3s node that contains the microphone.
 
-1. The camera will have an IP in the range of 10.31.81.10 - 19. Do we want to set the Amcrest camera to a static IP (i.e. 10.31.8.20 ), so that it's easy to get be used by `pywaggle` / WES. With a static IP address the camera can be easily discovered and "hard-coded" into the WES config for `pywaggle` to discover.
+12. The camera will have an IP in the range of 10.31.81.10 - 19. Do we want to set the Amcrest camera to a static IP (i.e. 10.31.8.20 ), so that it's easy to get be used by `pywaggle` / WES. With a static IP address the camera can be easily discovered and "hard-coded" into the WES config for `pywaggle` to discover.
 
-1. Investigate if the `ip_set` kernel module is needed. This was something that was required to enable some kubernetes networking features on the WWN and therefore might be needed here.
+13. Investigate if the `ip_set` kernel module is needed. This was something that was required to enable some kubernetes networking features on the WWN and therefore might be needed here.
 
-1. Add the BME680 sensor support steps to the Ansible script
+14. Add the BME680 sensor support steps to the Ansible script
 
-1. Add a Ansible script for configuring the Nano to operate as an "agent" instead of a "core".  Maybe use a "global variable" to control the Ansible scripts. And/or we do differnet 'hosts' in the inventory file.
+15. Add a Ansible script for configuring the Nano to operate as an "agent" instead of a "core".  Maybe use a "global variable" to control the Ansible scripts. And/or we do differnet 'hosts' in the inventory file.
    - required ssh key access to be able to ssh to the agents from the core (for admin stuff)
    - local docker registry access
      - don't include local docker registry service
