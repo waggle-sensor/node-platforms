@@ -20,3 +20,5 @@
 |1|Indoor Desktop Microphone|https://www.amazon.com/Microphone-Condenser-Indicator-Gooseneck-Recording/dp/B07N2WRHMY/
 |1|Outdoor Desktop Microphone|https://www.surveillance-video.com/audio-ml1-ws-ip54.html
 |1|TPH Sensor (BME 680)|https://www.sparkfun.com/products/15743/
+
+Continue to [Bootstrap steps](./setup_guides/bootstrap.md)
