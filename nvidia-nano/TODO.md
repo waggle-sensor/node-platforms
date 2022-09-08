@@ -12,6 +12,8 @@ This is an organized list of the items that are left to complete for the Nvidia 
    - Add more details to the [hardware list](./bom.md) and keep it up-to-date. Also label them with pictures, so it's easier to connect the hardware
 
 2. Tech items to fix in the Ansible script
+   - the `swapoff` step will fail if the swap partition is detected but NOT currently mounted. The work-around is to do a `swapon /dev/sda1` (all `linux-swap` partitions) before doing the `swapoff` to ensure they are unmounted.
+     - The better way to do this is to only attempt `swapoff` for swap partitons in `sda` that are currently mounted.
    - update the docker part to delete all pre-existing docker images (rm docker folder) and always create a new empty one to start from
    - combine networkmanager items into 1 with_items. remove the extra permissions apply to the NetworkManager folder
    - when combining all the files from ROOTFS and setting specific permissions, we can loop the permissions in the next step with_items to ensure they are correct
