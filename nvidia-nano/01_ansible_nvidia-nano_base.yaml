@@ -26,6 +26,10 @@
       parted: device="{{ ext_drive_dev }}" unit=MiB
       register: sda_info
 
+    - name: Print {{ ext_drive_dev }} device information
+      ansible.builtin.debug:
+        msg: "{{sda_info}}"
+
     - name: Disable {{ ext_drive_dev }} swap partitions
       shell: swapoff {{ ext_drive_dev }}{{ item.num }}
       args:
