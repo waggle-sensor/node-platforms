@@ -1,4 +1,4 @@
-#### Your nano kit should all of the following products:
+#### Your nano kit should contain all of the following products:
 
 | Number | Product | Link |
 |-|-|-|

@@ -2,7 +2,7 @@
 
 Contains set up instructions and an `ansible` playbook for the NVIDIA Nano Node Platform.
 
-This project is a work in progress, so our development notes and to do list can be found [here](./TODO.md). 
+This project is a work in progress, so our development notes and To-Do list can be found [here](./TODO.md). 
 
 Please reach out to [Waggle Team](https://docs.waggle-edge.ai/docs/contact-us) with any questions or concerns.
 
