@@ -1,6 +1,10 @@
 ---
+
+- name: Set up root access
+  ansible.builtin.import_playbook: root_access.yaml
+  
 - name: Check Jetpack version
-  hosts: all
+  hosts: root
   tasks:
     - name: Update repositories cache
       ansible.builtin.apt:
@@ -15,7 +19,7 @@
       when: not ('4.4.1' in jetpackVer.stdout)
 
 - name: Set Up Extra Drive
-  hosts: all
+  hosts: root
   vars_prompt:
     - name: Connect Drive
       prompt: Please connect your usb drive to the nano. When ready press enter
@@ -125,7 +129,7 @@
       ansible.builtin.reboot:
 
 - name: Install Tools
-  hosts: all
+  hosts: root
   tasks:
     - name: install helpful tools
       ansible.builtin.apt:
@@ -170,7 +174,7 @@
         deb: https://github.com/waggle-sensor/waggle-bk-reverse-tunnel/releases/download/v2.3.2/waggle-bk-reverse-tunnel_2.3.2_all.deb
 
 - name: Remove Uneeded Items
-  hosts: all
+  hosts: root
   tasks:
     - name: Remove packages
       ansible.builtin.apt:
@@ -225,7 +229,7 @@
         enabled: no
 
 - name: Copy ROOTFS into the System
-  hosts: all
+  hosts: root
   tasks:
     - name: Add the WaggleOS MOTD
       ansible.builtin.copy:
@@ -346,7 +350,7 @@
         daemon_reload: yes
 
 - name: Configure Docker to use External Media
-  hosts: all
+  hosts: root
   tasks:
     #Filesystem gets created when docker's first command is ran
     - name: Start up docker to create filesystem
@@ -376,7 +380,7 @@
         state: started
 
 - name: Configure k3s to Use External Media
-  hosts: all
+  hosts: root
   tasks:
     - name: Create external media directories
       ansible.builtin.file:
@@ -409,7 +413,7 @@
         - { src: "/media/plugin-data/k3s/rancher", dest: "/var/lib/rancher" }
 
 - name: k3s Service Startup Customizations
-  hosts: all
+  hosts: root
   vars_prompt:
     - name: Connect lan0
       prompt: Please connect your camera via the usb dongle for ethernet connection. When ready press enter
@@ -461,7 +465,7 @@
         state: started
 
 - name: Configure The Local Dev Docker Registry
-  hosts: all
+  hosts: root
   tasks:
     - name: apply 600 permissions to Local Dev Docker Registry domain crt
       ansible.builtin.file:
@@ -521,7 +525,7 @@
         state: started
 
 - name: Add waggle hotspot support
-  hosts: all
+  hosts: root
   tasks:
     # Note: the device will auto-connect to a ssid: waggle / passwd: Why1Not@Waggle network now
     - name: Apply 600 permission to system-connections
@@ -532,7 +536,7 @@
         recurse: yes
 
 - name: Enable NetworkManager Connectivity checks
-  hosts: all
+  hosts: root
   tasks:
     - name: Checking for 'net.ipv4.conf.default.rp_filter = 2' in /etc/sysctl.conf file
       shell: cat /etc/sysctl.conf | grep 'net.ipv4.conf.default.rp_filter = 2' | wc -l
@@ -560,7 +564,7 @@
 
 #Note: the below instructions hard-code a static VSN. In the future we will want to generate a random VSN (NXXX where X is a [0-9A-Z]) (TODO)
 - name: Set the node friendly ID (VSN)
-  hosts: all
+  hosts: root
   tasks:
     - name: Hard-code a static VSN
       shell: echo N001 > /etc/waggle/vsn
@@ -581,7 +585,7 @@
         msg: "Node ID: {{Node_ID}}"
 
 - name: Register node and establish connection to Beehive
-  hosts: all
+  hosts: root
   vars_prompt:
     - name: Node Registration
       prompt: Please register your node in https://portal.sagecontinuum.org/my-devices, when you are finish you will receive registration.zip. Place registration.zip in the same location this playbook is sitting in (i.e. /node-platforms/nvidia-nano/). When you are done press enter
