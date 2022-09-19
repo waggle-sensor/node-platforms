@@ -1,18 +1,15 @@
-## Setting up Ansible on your computer
+## Installing Ansible on your Computer
 
-This guide will go through installing ansible on your computer, creating a ssh-key pair with the nano, cloning this repository, and configuring the `ansible_inventory` file.
+This guide will go through installing ansible on your computer
 
 **Required skills:** 
-* Using command line interface for your computer
-* Editing a file using Vim
-* Cloning a GitHub repository
+* Using the Command Line Interface of your computer
 
-**Helpful guides:**
-* [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
-
+**Helpful Guides**
+* [Command Line Interface (CLI) definition](https://www.techtarget.com/searchwindowsserver/definition/command-line-interface-CLI)
 ---
 
-> Note: `ansible` is _not_ needed on the Nano in order to perform `ansible` provisioning.
+> Note: **ansible** is _not_ needed on the Nano in order to perform **ansible** provisioning; i.e., you do not need to install ansible on the nano.
 
 
 1. On your computer, install Ansible
@@ -42,14 +39,14 @@ This guide will go through installing ansible on your computer, creating a ssh-k
             ```
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
             ```
-        > Dev Note: check if you need to add Homebrew shell configuration for apple silicon machines
-        1. You can test that Homebrew is installed correctly by checking the version: 
+        
+        2. You can test that Homebrew is installed correctly by checking the version: 
             `brew --version`
 
-        2. Within the terminal, install Ansible using the command 
+        3. Within the terminal, install Ansible using the command 
             `brew install ansible`
 
-        3. You can test that Ansible is installed correctly by checking the version:
+        4. You can test that Ansible is installed correctly by checking the version:
             `ansible --version`
 
     3. Instructions for Windows
@@ -92,50 +89,6 @@ This guide will go through installing ansible on your computer, creating a ssh-k
             `ansible --version`
         >Note: Everytime you need to need to use a terminal for the preceding instructions open Ubuntu by visiting the Windows Start menu and typing `Ubuntu`
 
-2. Set up ssh-keypair with the Jetson Nano
+##### Ansible is now installed!
 
-    1. Open a terminal and run the command `ssh-keygen` to create a ssh-key
-
-        1. When asked to enter a file in which to save the key, copy the file path inside the parenthesis ex; `/Users/flozano/.ssh/id_rsa`. Then leave the entry blank and press enter to keep the default file.
-
-        2. If asked to overwrite press `y` and then enter
-
-        3. If asked to enter in a passphrase leave it blank and press enter
-
-    2. Share the ssh-key with your Jetson Nano following this command template
-        ```
-        ssh-copy-id -i {file path} root@{ip}
-        ```
-    
-    3. After you have replaced `{file path}` with the file path you just coppied and replaced `{ip}` with your Jetson Nano's ip address you can now run the command to share the ssh-key
-        - Example
-            ```
-            ssh-copy-id -i /Users/flozano/.ssh/id_rsa root@130.202.141.76
-            ```
-
-3. Open a terminal and travel to your home directory `cd ~`
-
-4. Clone this repository using this command:
-    ```
-    git clone https://github.com/waggle-sensor/node-platforms.git
-    ```
-
-5. Travel into the folder that is holding the Ansible Playbook using this command:
-    ```
-    cd ~/node-platforms/nvidia-nano
-    ```
->Note: Everytime you run an ansible commmand make sure you are in this directory
-
-6. Replace `{ip}` in the `ansible_inventory` file with your Jetson Nano's ip address using vim or any other text editor program
-    - After it is replaced it should look similiar to this
-        ```
-        [nano]
-        0.0.0.0 ansible_user=root
-        ```
-
-7. You can now test if the Ansible script can reach your Jetson Nano via this command:
-    ```
-    ansible all -i ansible_inventory -m ping
-    ```
-
-Continue to [Running The Ansible Playbook](./running_ansible.md)
+Continue to [Configure Ansible](./configure_ansible.md)
