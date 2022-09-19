@@ -1,6 +1,6 @@
 # Bootstrapping Jetson Nano
 
-This guide will instruct on how to install JetPack SDK 4.4.1, turn on the nano, connect and initially set up the nano
+This guide will show how to install JetPack SDK 4.4.1, turn on the nano, connect and initially set up the nano
 
 **Required skills:** 
 * Opening and closing command line on your computer
@@ -29,35 +29,38 @@ This guide will instruct on how to install JetPack SDK 4.4.1, turn on the nano, 
     2. Pins Jumpered (both pins covered by jumper):
   <img alt='Jumpered Image'  src='./images/jumpered.jpeg' width='800'>
 
-5. ***Recommended*** Connect the network switch
+5. Connect to the internet
 
     1. Connect the nano to the internet with an ethernet cable. This is where the nano will get access to WAN (Wide Area Network ie internet).
 
     2. Do the same with your laptop.
 
 6. Connect your computer to the Nano via it's micro USB port
+
+7. Connect the nano's power supply. 
+   > Note: At this point only the ethernet cable, micro-usb to usb (micro-usb side), and power cord should be connected to the nano. 
   
-7. Follow step 9 on <a href="https://developer.nvidia.com/embedded/learn/get-started-jetson-nano-devkit#setup-headless">Nvidia's website</a> to set up the Nano according to your operating system
+8.  Follow step 9 on <a href="https://developer.nvidia.com/embedded/learn/get-started-jetson-nano-devkit#setup-headless">Initial Setup Headless Mode</a> to set up the Nano according to your operating system
 <img alt='welcome' src='./images/welcome.jpeg' width='800'>
 
 1. Once you are connected to the nano go through the initial set up
    >Note: you can navigate the serial UI with the arrow keys and "enter/return" button on your keyboard
-    1. Set full name to `waggle`, username to `waggle` and password to `waggle`
+    1. Set full name to **waggle**, username to **waggle** and password to **waggle**
 
-    2. Set partition size to `0` or leave blank
+    2. Set partition size to **0** or leave blank
 
-    3. When you get to the Network Configuration Screen, select the `eth0` option
+    3. When you get to the Network Configuration Screen, select the **eth0** option
 
-    4. Set hostname to `localhost`
+    4. Set hostname to **localhost**
         > Note: The hostname will change later to node id
     
     5. Use default nvpmodel (MAXN) (10W)
 
 2. In Headless mode, once you are done with the intial set up you will be in the nano's command line for a few seconds before it boots you out
 
-3.  Go through step 9 in <a href="https://developer.nvidia.com/embedded/learn/get-started-jetson-nano-devkit#setup-headless">Nvidia's website</a> again to return to the nano's command line
+3.  Go through step 9 in <a href="https://developer.nvidia.com/embedded/learn/get-started-jetson-nano-devkit#setup-headless">Initial Setup Headless Mode</a> again to return to the nano's command line
 
 4.  Once you are in, it will ask you for your username (waggle) and password you just set up
 
 ##### You should now be logged in as waggle user in the nano's command line!
-Continue to [Enabling `root` SSH access](./enabling_root_access.md)
+Continue to [Installing Ansible on your Computer](./installing_ansible.md)

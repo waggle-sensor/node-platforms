@@ -1,20 +1,22 @@
-# Enabling `root` SSH access on Jetson Nano
+# Configure Ansible
 
-This guide shows how to access `root` on the nano from another computer
+This guide shows how to access the IP address of the nano, clone the **waggle-sensor/node-platforms** repository, and configure the Ansible inventory file
 
 **Required skills:** 
+* Using the Command Line Interface of your computer
 * Using command line arguments in Linux
-* Using VIM in Linux
+* Cloning a GitHub repository
 
 **Helpful guides:**
 * [Linux Command Line Interface Introduction: A Guide to the Linux CLI](https://www.linuxjournal.com/content/linux-command-line-interface-introduction-guide)
-* [Classic SysAdmin: Vim 101: A Beginner’s Guide to Vim](https://linuxfoundation.org/blog/classic-sysadmin-vim-101-a-beginners-guide-to-vim/)
+* [Cloning a GitHub repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)  
 
 ---
 
 ### SSH access steps
 
-  1. Get IP for `eth0`
+  1. Connect to the nano's command line again by following step 9 in <a href="https://developer.nvidia.com/embedded/learn/get-started-jetson-nano-devkit#setup-headless">Initial Setup Headless Mode</a>
+  2. Get IP for eth0
       1. run command `ifconfig eth0`
       
           ```bash
@@ -39,22 +41,23 @@ This guide shows how to access `root` on the nano from another computer
           inet 000.000.0.000
           ```
           >Note: Write down your Jetson Nano's ip address it is very important in the following steps
-  2. Run command `sudo su`
-      1. enter in your password ie `waggle`
+  3. Open a terminal on your computer and travel to your home directory (`cd ~` on macOS)
+  4. Clone this repository using this command:
+        ```
+        git clone https://github.com/waggle-sensor/node-platforms.git
+        ```
+  5. Travel into the folder that is holding the Ansible Playbooks using this command:
+        ```
+        cd ~/node-platforms/nvidia-nano
+        ```
+        >Note: Everytime you run an ansible commmand make sure you are in this directory
+  6. Replace `{ip}` in the `ansible_inventory` file with your Jetson Nano's ip address using vim or any other text editor program
+       - After it is replaced it should look similiar to this
+           ```
+           [nano:vars]
+           ansible_host=0.0.0.0
+           ```
 
-  3. Set root user password
-      1. run command `passwd root`
+##### Ansible is all setup!
 
-      2. set password to `waggle`
-
-  4. Enable root user ssh login
-      1. run command `vim /etc/ssh/sshd_config`
-          1. Go to the bottom of the file
-          2. Enter in `PermitRootLogin yes` and `PasswordAuthentication yes` (Make sure they are in seperate lines)
-          3. Save and exit the file
-          > Note: In vim to enter in insert mode press 'i'. To exit insert mode press 'esc'. To save and quit type in ':wq' and press enter when not in insert mode
-      2. run command `service sshd restart` to restart ssh service
-
-> Note: The jetson nano can NOT have an IP on the ethernet in the 10.42.0.0 IP space as k3s internal network uses that subnet.
-
-Continue to [Setting up Ansible on your computer](./configuring_ansible.md)
+Continue to [Running The Ansible Playbook](./running_ansible.md)
