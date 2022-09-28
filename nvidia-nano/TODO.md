@@ -13,7 +13,7 @@ This is an organized list of the items that are left to complete for the Nvidia 
    - update the /etc/sysctl.conf check for the rp_filter to use a "in file" ansible command to ensure it is there. use `blockinfile` ansible builtin
    - make the default/motd-news a ROOTFS file
 
-2. Change how the 'hosts: all" works. we only want to do this for nano hosts.  and then we can have a nano-agent host?  i dont know quite yet how we want to do this.
+2. Change how the 'hosts: all" works. we only want to do this for nano hosts.  and then we can have a nano-agent host?  I don't know quite yet how we want to do this.
     - reference: https://github.com/NVIDIA/cloud-native-core/blob/master/playbooks/guides/Jetson_Xavier_v7.0.md#using-the-ansible-playbooks
 
 
@@ -39,7 +39,7 @@ This is an organized list of the items that are left to complete for the Nvidia 
 
 11. Add the BME680 sensor support steps to the Ansible script
 
-12. Add a Ansible script for configuring the Nano to operate as an "agent" instead of a "core".  Maybe use a "global variable" to control the Ansible scripts. And/or we do differnet 'hosts' in the inventory file.
+12. Add a Ansible script for configuring the Nano to operate as an "agent" instead of a "core".  Maybe use a "global variable" to control the Ansible scripts. And/or we do different 'hosts' in the inventory file.
    - required ssh key access to be able to ssh to the agents from the core (for admin stuff)
    - local docker registry access
      - don't include local docker registry service

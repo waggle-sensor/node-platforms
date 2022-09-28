@@ -41,7 +41,7 @@
         ```
 
     - k3s service should start and the service override should work
-    >Dev Note: Insert correct Ouput here
+    >Dev Note: Insert correct Output here
 
 2. If `service k3s status` returns active then test k3s and run basic pod by running the following commands:
     ```bash 
@@ -62,7 +62,7 @@
 
 4. Test docker's GPU access by running this command `docker run -ti --rm --gpus all waggle/gpu-stress-test:latest`
 
-    - To see if the gpu is being used check the gpu frequency (GR3D_FREQ) by running this command `tegrastats` in a seperate terminal
+    - To see if the gpu is being used check the gpu frequency (GR3D_FREQ) by running this command `tegrastats` in a separate terminal
 
 5. If `service k3s status` returns active and `kubectl get node` returns an active node then test k3s' GPU access by running this command `kubectl run gpu-test --image=waggle/gpu-stress-test:latest --attach=true`
     > Note: You may see the error `error: timed out waiting for the condition`. that is okay. it just means it is taking a long time to create the container in `k3s`
