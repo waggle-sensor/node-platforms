@@ -56,7 +56,7 @@ This guide will show how to install JetPack SDK 4.4.1, turn on the nano, connect
     
     5. Use default nvpmodel (MAXN) (10W)
 
-2. In Headless mode, once you are done with the intial set up you will be in the nano's command line for a few seconds before it boots you out
+2. In Headless mode, once you are done with the initial set up you will be in the nano's command line for a few seconds before it boots you out
 
 3.  Go through step 9 in <a href="https://developer.nvidia.com/embedded/learn/get-started-jetson-nano-devkit#setup-headless">Initial Setup Headless Mode</a> again to return to the nano's command line
 

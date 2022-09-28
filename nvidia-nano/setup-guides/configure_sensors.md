@@ -61,7 +61,7 @@ The black wire should connect to the ground pin and the red wire should connect 
     bme680
     ```
 
-12.  Once the sensor is registered, the sensors readings can be acquired using the sysfs interface:
+12.  Once the sensor is registered, the sensors readings can be acquired using the `sysfs` interface:
 
         ```bash
         root@<id>:~#  grep ^ /dev/null /sys/bus/i2c/devices/i2c-1/1-0076/iio:device1/*input*
@@ -73,7 +73,7 @@ The black wire should connect to the ground pin and the red wire should connect 
         ```
 > Note: If your sensor is on 0x77 the relative path will be `/sys/bus/i2c/devices/i2c-1/1-0077/iio:device1/*input*`
 
-13. If your outputs in steps 11 & 12 are similiar then configure the nano to set bme680 on boot
+13. If your outputs in steps 11 & 12 are similar then configure the nano to set bme680 on boot
 
     1. To load the bme680_i2c kernel module on startup add it to the modules.conf file by running this command `echo bme680_i2c >> /etc/modules-load.d/modules.conf`
 

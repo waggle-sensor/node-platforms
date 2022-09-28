@@ -14,7 +14,7 @@ This guide will go through installing ansible on your computer
 
 1. On your computer, install Ansible
 
-    1. Intructions for Linux
+    1. Instructions for Linux
 
         1. Open a terminal and install pip
 
@@ -56,7 +56,7 @@ This guide will go through installing ansible on your computer
             1. Prerequisites
 
                 - You must be running Windows 10 version 2004 and higher (Build 19041 and higher) or Windows 11.
-                > Note: To check your Windows version and build number, select Windows logo key + R, type winver, select OK. You can update to the latest Windows version by selecting Start > Settings > Windows Update > Check for updates.
+                > Note: To check your Windows version and build number, select Windows logo key + R, type `winver`, select OK. You can update to the latest Windows version by selecting Start > Settings > Windows Update > Check for updates.
 
             2. You can now install everything you need to run Windows Subsystem for Linux (WSL) by entering this command in Windows Command Prompt
                 `wsl --install`
@@ -87,7 +87,7 @@ This guide will go through installing ansible on your computer
 
         5. You can test that Ansible is installed correctly by checking the version:
             `ansible --version`
-        >Note: Everytime you need to need to use a terminal for the preceding instructions open Ubuntu by visiting the Windows Start menu and typing `Ubuntu`
+        >Note: Every time you need to need to use a terminal for the preceding instructions open Ubuntu by visiting the Windows Start menu and typing `Ubuntu`
 
 ##### Ansible is now installed!
 

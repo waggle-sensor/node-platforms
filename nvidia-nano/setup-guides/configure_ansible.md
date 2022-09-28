@@ -50,7 +50,7 @@ This guide shows how to access the IP address of the nano, clone the **waggle-se
         ```
         cd ~/node-platforms/nvidia-nano
         ```
-        >Note: Everytime you run an ansible commmand make sure you are in this directory
+        >Note: Every time you run an ansible command make sure you are in this directory
   6. Replace `{ip}` in the `ansible_inventory` file with your Jetson Nano's ip address using vim or any other text editor program
        - After it is replaced it should look similiar to this
            ```

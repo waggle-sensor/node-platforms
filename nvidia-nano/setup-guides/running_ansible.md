@@ -15,7 +15,7 @@ Stuff to keep in mind while the ansible script runs:
 
 - **Don't leave your desk while the playbook runs**! The playbook will give you more instructions on what to do as it runs
 
-- If you are connecting over wifi it can cause the ansible playbook to disconnect when the nano reboots, so having both the nano and your computer on ethernet connections is reccomended
+- If you are connecting over wifi it can cause the ansible playbook to disconnect when the nano reboots, so having both the nano and your computer on ethernet connections is recommended
 
 - Connect your hardware when the ansible playbook tells you to
 
