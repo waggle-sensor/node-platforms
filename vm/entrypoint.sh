@@ -6,11 +6,19 @@
 set -x
 set -e
 
+# override node id, if defined
+if [[ "${WAGGLE_NODE_ID}" ]]; then
+  echo "${WAGGLE_NODE_ID}" > /etc/waggle/node-id
+fi
+
+# override node vsn, if defined
+if [[ "${WAGGLE_NODE_VSN}" ]]; then
+  echo "${WAGGLE_NODE_VSN}" > /etc/waggle/vsn
+fi
 
 # create fake kubectl for debugging
 echo -e '#!/bin/bash\necho "(this is a dummy) created"' > /usr/local/bin/kubectl
 chmod +x /usr/local/bin/kubectl
-
 
 cd /etc/waggle
 
