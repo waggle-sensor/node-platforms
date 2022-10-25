@@ -16,7 +16,6 @@ RUN apt install -y software-properties-common && add-apt-repository --yes --upda
 
 # do not copy "private" folder
 COPY ansible/*.yaml ansible/*.yml ansible/05-sage  /ansible/
-COPY entrypoint.sh .
 
 WORKDIR /ansible
 ENV LC_ALL=C.UTF-8
@@ -51,5 +50,6 @@ RUN ansible-playbook -i localhost, -c local ./waggle_config.yml \
     -e copy_k8s_resource_files=no
     #-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
 
+COPY entrypoint.sh /entrypoint.sh
 CMD /entrypoint.sh
 #CMD /bin/sleep infinity
