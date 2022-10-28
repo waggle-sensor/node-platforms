@@ -7,4 +7,3 @@ ansible_host={ip}
 ansible_connection=paramiko
 ansible_password=waggle
 ext_drive_dev=/dev/sda
-proxy=http://localhost:32000

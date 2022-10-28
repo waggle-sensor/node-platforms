@@ -51,12 +51,38 @@ This guide shows how to access the IP address of the nano, clone the **waggle-se
         cd ~/node-platforms/nvidia_jetson
         ```
         >Note: Every time you run an ansible command make sure you are in this directory
-  6. Replace `{ip}` in the `ansible_inventory` file with your Jetson Nano's ip address using vim or any other text editor program
+  6. Replace `{ip}` in the `ansible_inventory` file with your Jetson's ip address using vim or any other text editor program
        - After it is replaced it should look similiar to this
            ```
            [nano:vars]
            ansible_host=0.0.0.0
            ```
+
+### Set MAC address of the USB dongle for internal network
+
+Your Jetson can host other computing devices or network-based sensors. You will need to get MAC address of your USB dongle and update the [udev rule](../ROOTFS/etc/udev/rules.d/10-waggle.rules). Connect the dongle to your Jetson.
+
+To get MAC address of USB dongle,
+```
+ip address show eth1 | grep ether | tr -s ' ' | awk '{ print $2 }'
+```
+
+You will get MAC address of the dongle,
+```
+# You will probably get different MAC address than below as it is dependent on vender of the dongle
+70:88:6b:8a:00:01
+```
+
+If you do not get any MAC address, please try the `ip` command with different number for eth
+```
+ip address show eth2 | grep ether | tr -s ' ' | awk '{ print $2 }'
+```
+
+Update the udev rule with obtained MAC address
+```
+# Replace {mac} with the MAC address you obtained above
+sed -i 's/f8:e4:3b:\*/{mac}/g' ROOTFS/etc/udev/rules.d/10-waggle.rules
+```
 
 ##### Ansible is all setup!
 
