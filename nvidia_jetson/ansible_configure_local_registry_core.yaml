@@ -1,0 +1,60 @@
+---
+- name: Configure The Local Dev Docker Registry
+  hosts: root
+  tasks:
+    - name: apply 600 permissions to Local Dev Docker Registry domain crt
+      ansible.builtin.file:
+        path: /etc/waggle/docker/certs/domain.crt
+        mode: 0600
+
+    - name: apply 600 permissions to Local Dev Docker Registry domain key
+      ansible.builtin.file:
+        path: /etc/waggle/docker/certs/domain.key
+        mode: 0600
+
+    - name: Create local dev docker registry directory
+      ansible.builtin.file:
+        path: /etc/docker/certs.d/10.31.81.1:5000
+        state: directory
+        recurse: yes
+
+    - name: Copy domain crt to local dev docker registry directory
+      ansible.builtin.copy:
+        src: /etc/waggle/docker/certs/domain.crt
+        dest: /etc/docker/certs.d/10.31.81.1:5000/
+        remote_src: yes
+        mode: 0600
+
+    - name: Create ca-certificate directory
+      ansible.builtin.file:
+        path: /usr/local/share/ca-certificates
+        state: directory
+        recurse: yes
+
+    - name: Copy domain.crt to ca-certificates directory
+      ansible.builtin.copy:
+        src: /etc/waggle/docker/certs/domain.crt
+        dest: /usr/local/share/ca-certificates/docker.crt
+        remote_src: yes
+        mode: 0600
+
+    - name: Update Certificates
+      shell: update-ca-certificates
+      args:
+        executable: /bin/bash
+
+    - name: Make the directories for the docker registries
+      ansible.builtin.file:
+        path: /media/plugin-data/docker_registry/local
+        state: directory
+        recurse: yes
+
+    - name: Reload Daemon
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Enable waggle registry local service
+      ansible.builtin.systemd:
+        name: waggle-registry-local.service
+        enabled: yes
+        state: started

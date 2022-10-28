@@ -1,0 +1,111 @@
+---
+- name: Configure k3s to Use External Media
+  hosts: root
+  tasks:
+    - name: Create external media directories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        recurse: yes
+      with_items:
+        - { path: "/media/plugin-data/k3s/etc/rancher" }
+        - { path: "/media/plugin-data/k3s/kubelet" }
+        - { path: "/media/plugin-data/k3s/rancher" }
+
+    - name: Ensure symlink destinations don't exist
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      with_items:
+        - { path: "/etc/rancher" }
+        - { path: "/var/lib/kubelet" }
+        - { path: "/var/lib/rancher" }
+
+    - name: Create external media symlinks
+      ansible.builtin.file:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        force: yes
+        state: link
+      with_items:
+        - { src: "/media/plugin-data/k3s/etc/rancher", dest: "/etc/rancher" }
+        - { src: "/media/plugin-data/k3s/kubelet", dest: "/var/lib/kubelet" }
+        - { src: "/media/plugin-data/k3s/rancher", dest: "/var/lib/rancher" }
+
+- name: k3s Service Startup Customizations
+  hosts: root
+  vars_prompt:
+    - name: Connect to core
+      prompt: Please connect your Jetson to the Core device using Jetson's ethernet port. When ready press enter
+      private: no
+
+  tasks:
+    - name: Create k3s-agent.service.d
+      ansible.builtin.file:
+        path: /etc/systemd/system/k3s-agent.service.d
+        state: directory
+        mode: 0755
+        recurse: yes
+
+    - name: Create k3s-agent.service.d/override.conf
+      ansible.builtin.shell: |
+        cat <<EOF > /etc/systemd/system/k3s-agent.service.d/override.conf
+        [Unit]
+        After=waggle-nodeid.service
+        Wants=waggle-nodeid.service
+
+        [Service]
+        # Work-around default 'exec' option not being
+        Type=simple
+        # Fail service if Node ID file does not exist
+        ExecStartPre=/usr/bin/test -e /etc/waggle/node-id
+        ExecStartPre=/etc/waggle/k3s_config/pre-run.sh
+        ExecStart=
+        ExecStart=/bin/bash -ce "/usr/local/bin/k3s agent \\
+          --node-name \$(cat /etc/waggle/node-id).\$(waggle-get-config -s system -k name) \\
+        "
+        EOF
+
+    - name: Reload Daemon
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Enable k3s Shutdown Service
+      ansible.builtin.systemd:
+        name: waggle-k3s-shutdown
+        enabled: yes
+        state: started
+
+    ### Start of work around ### - work around will be changed later
+    - name: Unconditionally reboot the machine with all defaults
+      ansible.builtin.reboot: # reboot to create /etc/waggle/node-id file from waggle-nodeid service
+
+    - name: Create /etc/waggle/bk_key.pem file
+      ansible.builtin.file:
+        path: /etc/waggle/bk_key.pem
+        state: touch
+
+    - name: Run waggle node hostname python script
+      shell: /usr/bin/waggle_node_hostname.py -n /etc/waggle/node-id
+      args:
+        executable: /bin/bash
+
+    - name: Remove /etc/waggle/bk_key.pem file
+      ansible.builtin.file:
+        path: /etc/waggle/bk_key.pem
+        state: absent
+
+    - name: Unconditionally reboot the machine with all defaults # reboot is required for the hostname to change
+      ansible.builtin.reboot:
+    ### end of work around #####
+
+    - name: Configure k3s GPU access by applying executable permissions to pre-run.sh
+      ansible.builtin.file:
+        path: /etc/waggle/k3s_config/pre-run.sh
+        mode: a+x
+
+    - name: Enable k3s-agent
+      ansible.builtin.systemd:
+        name: k3s-agent.service
+        enabled: yes
+        state: started

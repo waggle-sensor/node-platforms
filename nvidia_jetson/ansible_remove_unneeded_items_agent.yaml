@@ -1,0 +1,55 @@
+---
+- name: Remove Uneeded Items
+  hosts: root
+  tasks:
+    - name: Remove packages
+      ansible.builtin.apt:
+        name: isc-dhcp-server, whoopsie, nfs-kernel-server
+        state: absent
+        purge: yes
+
+    - name: Remove dependencies that are no longer required
+      ansible.builtin.apt:
+        autoremove: yes
+
+    - name: Disable apt-daily service
+      ansible.builtin.systemd:
+        name: apt-daily.service
+        enabled: no
+
+    - name: Disable apt-daily timer
+      ansible.builtin.systemd:
+        name: apt-daily.timer
+        enabled: no
+
+    - name: Disable apt-daily-upgrade service
+      ansible.builtin.systemd:
+        name: apt-daily-upgrade.service
+        enabled: no
+
+    - name: Disable apt-daily-upgrade timer
+      ansible.builtin.systemd:
+        name: apt-daily-upgrade.timer
+        enabled: no
+
+    - name: Remove excutable permissions to update motd directory files
+      ansible.builtin.file:
+        path: /etc/update-motd.d
+        state: directory
+        mode: a-x
+        recurse: yes
+
+    - name: Add enabled=0 to motd news file
+      shell: echo 'ENABLED=0' > /etc/default/motd-news
+      args:
+        executable: /bin/bash
+
+    - name: Disable motd news service
+      ansible.builtin.systemd:
+        name: motd-news.service
+        enabled: no
+
+    - name: Disable motd news timer
+      ansible.builtin.systemd:
+        name: motd-news.timer
+        enabled: no

@@ -1,0 +1,28 @@
+---
+- name: Install Tools
+  hosts: root
+  tasks:
+    - name: install helpful tools
+      ansible.builtin.apt:
+        pkg:
+          - dnsutils
+          - htop
+          - iftop
+          - iotop
+          - jq
+          - nmap
+          - curl
+          - python3-click
+
+    - name: Install K3s via curl
+      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.20.2+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_URL=https://10.31.81.1:6443 K3S_TOKEN=4tX0DUZ0uQknRtVUAKjt sh -
+      args:
+        executable: /bin/bash
+
+    - name: Install the waggle-nodeid tool
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb
+
+    - name: Install waggle-commontools to read the config
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb
