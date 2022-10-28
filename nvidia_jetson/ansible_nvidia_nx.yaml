@@ -1,0 +1,16 @@
+---
+
+- name: Set up root access
+  ansible.builtin.import_playbook: root_access.yaml
+  
+- name: Check Jetpack version
+  ansible.builtin.import_playbook: ansible_check_jetpack.yaml
+
+- name: Create /media for storage
+  ansible.builtin.file:
+    path: /media
+    state: directory
+    mode: '0755'
+
+- name: Install and configure WES
+  ansible.builtin.import_playbook: ansible_install_wes.yaml

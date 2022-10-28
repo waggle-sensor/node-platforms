@@ -19,7 +19,7 @@ This guide will go through installing ansible on your computer
         1. Open a terminal and install pip
 
             1. Within the terminal, install python 3 and related packages using the command  
-                `sudo apt install python3-pip python3-dev`
+                `sudo apt install python3-pip python3-dev python3-paramiko`
 
             2. Make sure to have every package on your system up-to-date so there aren't any dependency issues:  
                 `sudo apt update`  
@@ -48,6 +48,11 @@ This guide will go through installing ansible on your computer
 
         4. You can test that Ansible is installed correctly by checking the version:
             `ansible --version`
+
+        5. Get pip to install a dependent package
+            `brew install pip`
+            
+            `pip install paramiko`
 
     3. Instructions for Windows
 

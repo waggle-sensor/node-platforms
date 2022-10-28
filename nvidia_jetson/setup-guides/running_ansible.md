@@ -7,11 +7,11 @@ This guide will show how to run the Ansible Playbook
 
 ---
 
-Ansible should now be set up to run the playbook that will configure your nano to run Waggle Edge Stack (WES). 
+Ansible should now be set up to run the playbook that will configure your Jetson to run Waggle Edge Stack (WES). 
 
 Stuff to keep in mind while the ansible script runs:
 
-- **Don't play with the nano while the playbook runs**. It can mess it up!
+- **Don't play with the Jetson while the playbook runs**. It can mess it up!
 
 - **Don't leave your desk while the playbook runs**! The playbook will give you more instructions on what to do as it runs
 
@@ -25,11 +25,18 @@ Stuff to keep in mind while the ansible script runs:
 
 - The playbook will enable root ssh, so to connect to the nano in the future use the command `ssh root@<IP>`
 
-In the **~/node-platforms/nvidia-nano** directory, run this command to start the playbook
+In the **~/node-platforms/nvidia_jetson** directory, run the following command to start the playbook
+
+If your Jetson is Nano,
 ```
-ansible-playbook -i ansible_inventory 01_ansible_nvidia-nano_base.yaml 
+ansible-playbook -i ansible_inventory ansible_nvidia_nano.yaml 
 ```
 
-##### Your nano can now run WES!
+If your Jetson is NX,
+```
+ansible-playbook -i ansible_inventory ansible_nvidia_nx.yaml 
+```
+
+##### Your Jetson can now run WES!
 
 Continue to [Configuring the Sensors](./configure_sensors.md)

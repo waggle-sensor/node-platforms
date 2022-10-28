@@ -1,6 +1,6 @@
-# NVIDIA Nano Node Platform
+# NVIDIA Jetson Node Platform
 
-Contains set up instructions and an `ansible` playbook for the NVIDIA Nano Node Platform.
+Contains set-up instructions and an `ansible` playbook for the NVIDIA Jetson Node Platform.
 
 This project is a work in progress, so our development notes and To-Do list can be found [here](./TODO.md). 
 
@@ -18,10 +18,12 @@ Please reach out to [Waggle Team](https://docs.waggle-edge.ai/docs/contact-us) w
 6. [Configuring the Sensors](./setup-guides/configure_sensors.md)
 7. **Optional**: [Optional Tests to Run](./setup-guides/test_nano.md)
 
-Follow the Table of Contents in sequence to ensure proper configuration.
+Please follow the Table of Contents in sequence to ensure proper configuration.
 
-Our instructions should be enough to set up the nano, but also included at the top of each guide are optional supplementary articles.
+We have tested the instructions on the following hardware,
+- [Nvidia Jetson Nano Devkit](https://developer.nvidia.com/embedded/jetson-nano-developer-kit)
+- [Nvidia Jetson Xavier NX Devkit](https://developer.nvidia.com/embedded/jetson-xavier-nx-devkit)
 
 For a non-technical overview of the process take a look at our [set up overview](https://youtu.be/83mLRyzxC4w).
 
-After successful set up of the nano, you can proceed to the [Waggle docs](https://docs.waggle-edge.ai/docs/about/overview) to see what you can do with your node.
+After successful set up of the platform, you can proceed to the [Waggle docs](https://docs.waggle-edge.ai/docs/about/overview) to see what you can do with your node.

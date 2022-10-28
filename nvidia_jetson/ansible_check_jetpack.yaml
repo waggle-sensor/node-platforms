@@ -1,0 +1,15 @@
+---
+- name: Check Jetpack version
+  hosts: root
+  tasks:
+    - name: Update repositories cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Register jetpack version
+      command: apt-cache show nvidia-jetpack
+      register: jetpackVer
+
+    - name: Test for Jetpack 4.4.1
+      fail: msg="The wrong version of Jetpack was flashed. I want jetpack 4.4.1"
+      when: not ('4.4.1' in jetpackVer.stdout)

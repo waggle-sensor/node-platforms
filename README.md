@@ -4,7 +4,7 @@ Here you will find the instructions for bootstrapping the different Waggle node 
 
 ## Supported Platforms
 
-- [NVidia Nano](nvidia-nano/README.md)
+- [NVidia Jetson](nvidia_jetson/README.md)
 - [Raspberry Pi 4](rpi4/README.md)
 - [Virtual](vm/README.md)
 - [Wild Waggle  Node](https://github.com/waggle-sensor/wild-waggle-node) ([src](https://github.com/waggle-sensor/wildnode-image))
