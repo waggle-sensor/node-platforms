@@ -186,11 +186,6 @@
         src: "{{ playbook_dir }}/ROOTFS/etc/systemd/resolved.conf.d/10-waggle-resolved.conf"
         dest: /etc/systemd/resolved.conf.d/10-waggle-resolved.conf
 
-    - name: Add wifi dongle support by copying ROOTFS/etc/udev/rules.d/10-waggle.rules to system
-      ansible.builtin.copy:
-        src: "{{ playbook_dir }}/ROOTFS/etc/udev/rules.d/10-waggle.rules"
-        dest: /etc/udev/rules.d/10-waggle.rules
-
     - name: Add wifi dongle support by copying ROOTFS/etc/modprobe.d/rtl8821cu.conf to system
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/ROOTFS/etc/modprobe.d/rtl8821cu.conf"
