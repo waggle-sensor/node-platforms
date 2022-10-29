@@ -43,6 +43,11 @@
         src: "{{ playbook_dir }}/ROOTFS/etc/waggle"
         dest: /etc
 
+    - name: Set device name in /etc/waggle/config.ini
+      ansible.builtin.copy:
+        src: /etc/waggle/config.ini.agent.tmpl
+        dest: /etc/waggle/config.ini
+
     - name: Configure the lan0 network interface to bind to 10.31.81.1
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/ROOTFS/etc/NetworkManager/system-connections/lan"

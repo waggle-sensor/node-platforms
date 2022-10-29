@@ -63,7 +63,7 @@
   hosts: root
   vars_prompt:
     - name: Node Registration
-      prompt: Please register your node in https://portal.sagecontinuum.org/my-devices, when you are finish you will receive registration.zip. Place registration.zip in the same location this playbook is sitting in (i.e. /node-platforms/nvidia-nano/). When you are done press enter
+      prompt: Please register your node in https://portal.sagecontinuum.org/my-devices, when you are finish you will receive registration.zip. Place registration.zip in the same location this playbook is sitting in (i.e. node-platforms/nvidia_jetson/). When you are done press enter
       private: no
 
   tasks:

@@ -37,8 +37,8 @@ def main(args):
 - name: Remove Uneeded Items for core
   ansible.builtin.import_playbook: ansible_remove_unneeded_items_core.yaml
 
-- name: Configure ROOTFS
-  ansible.builtin.import_playbook: ansible_copy_rootfs.yaml
+- name: Configure ROOTFS for core
+  ansible.builtin.import_playbook: ansible_copy_rootfs_core.yaml
 
 - name: Configure docker
   ansible.builtin.import_playbook: ansible_configure_docker.yaml
@@ -60,8 +60,8 @@ def main(args):
 - name: Remove Uneeded Items for agent
   ansible.builtin.import_playbook: ansible_remove_unneeded_items_agent.yaml
 
-- name: Configure ROOTFS
-  ansible.builtin.import_playbook: ansible_copy_rootfs.yaml
+- name: Configure ROOTFS for agent
+  ansible.builtin.import_playbook: ansible_copy_rootfs_agent.yaml
 
 - name: Configure docker
   ansible.builtin.import_playbook: ansible_configure_docker.yaml
