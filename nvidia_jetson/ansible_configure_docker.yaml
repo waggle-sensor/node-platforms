@@ -1,0 +1,30 @@
+---
+- name: Configure Docker to use External Media
+  hosts: root
+  tasks:
+    #Filesystem gets created when docker's first command is ran
+    - name: Start up docker to create filesystem
+      shell: docker --version
+      args:
+        executable: /bin/bash
+
+    - name: Stop docker
+      ansible.builtin.systemd:
+        name: docker
+        state: stopped
+
+    - name: Move docker
+      shell: mv /var/lib/docker /media/plugin-data/docker
+      args:
+        executable: /bin/bash
+
+    - name: Create a symbolic link
+      ansible.builtin.file:
+        src: /media/plugin-data/docker/
+        dest: /var/lib/docker
+        state: link
+
+    - name: Start up docker
+      ansible.builtin.systemd:
+        name: docker
+        state: started

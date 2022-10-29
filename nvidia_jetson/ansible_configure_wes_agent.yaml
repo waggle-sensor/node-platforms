@@ -1,0 +1,59 @@
+---
+- name: Add waggle hotspot support
+  hosts: root
+  tasks:
+    # Note: the device will auto-connect to a ssid: waggle / passwd: Why1Not@Waggle network now
+    - name: Apply 600 permission to system-connections
+      ansible.builtin.file:
+        path: /etc/NetworkManager/system-connections
+        state: directory
+        mode: 0600
+        recurse: yes
+
+- name: Enable NetworkManager Connectivity checks
+  hosts: root
+  tasks:
+    - name: Checking for 'net.ipv4.conf.default.rp_filter = 2' in /etc/sysctl.conf file
+      shell: cat /etc/sysctl.conf | grep 'net.ipv4.conf.default.rp_filter = 2' | wc -l
+      args:
+        executable: /bin/bash
+      register: sysctlconf_default_output
+
+    - name: Add line in /etc/sysctl.conf file
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.conf
+        line: "net.ipv4.conf.default.rp_filter = 2"
+      when: sysctlconf_default_output.stdout == "0"
+
+    - name: Checking for 'net.ipv4.conf.all.rp_filter = 2' in /etc/sysctl.conf file
+      shell: cat /etc/sysctl.conf | grep 'net.ipv4.conf.all.rp_filter = 2' | wc -l
+      args:
+        executable: /bin/bash
+      register: sysctlconf_all_output
+
+    - name: Add line in /etc/sysctl.conf file
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.conf
+        line: "net.ipv4.conf.all.rp_filter = 2"
+      when: sysctlconf_all_output.stdout == "0"
+
+#Note: the below instructions hard-code a static VSN. In the future we will want to generate a random VSN (NXXX where X is a [0-9A-Z]) (TODO)
+- name: Set the node friendly ID (VSN)
+  hosts: root
+  tasks:
+    - name: Get Node ID #file lookup plugin doesnt work because the file is in the client not in host
+      slurp: #method to get file contents from client (content is in base64)
+        src: /etc/waggle/node-id
+      register: remote_content_encoded
+
+    - name: Decode Remote Content
+      set_fact:
+        Node_ID: "{{remote_content_encoded.content | b64decode}}"
+
+    - name: Output Node ID #Give user their node id
+      debug:
+        msg: "Node ID: {{Node_ID}}"
+
+    - name: Conclusion
+      debug:
+        msg: "The device is now configured for WES. Now, it should be connected to Waggle core device to support distributed computing. You can come back to the Waggle core device."

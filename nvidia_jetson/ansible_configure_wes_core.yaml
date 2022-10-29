@@ -1,0 +1,96 @@
+---
+- name: Add waggle hotspot support
+  hosts: root
+  tasks:
+    # Note: the device will auto-connect to a ssid: waggle / passwd: Why1Not@Waggle network now
+    - name: Apply 600 permission to system-connections
+      ansible.builtin.file:
+        path: /etc/NetworkManager/system-connections
+        state: directory
+        mode: 0600
+        recurse: yes
+
+- name: Enable NetworkManager Connectivity checks
+  hosts: root
+  tasks:
+    - name: Checking for 'net.ipv4.conf.default.rp_filter = 2' in /etc/sysctl.conf file
+      shell: cat /etc/sysctl.conf | grep 'net.ipv4.conf.default.rp_filter = 2' | wc -l
+      args:
+        executable: /bin/bash
+      register: sysctlconf_default_output
+
+    - name: Add line in /etc/sysctl.conf file
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.conf
+        line: "net.ipv4.conf.default.rp_filter = 2"
+      when: sysctlconf_default_output.stdout == "0"
+
+    - name: Checking for 'net.ipv4.conf.all.rp_filter = 2' in /etc/sysctl.conf file
+      shell: cat /etc/sysctl.conf | grep 'net.ipv4.conf.all.rp_filter = 2' | wc -l
+      args:
+        executable: /bin/bash
+      register: sysctlconf_all_output
+
+    - name: Add line in /etc/sysctl.conf file
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.conf
+        line: "net.ipv4.conf.all.rp_filter = 2"
+      when: sysctlconf_all_output.stdout == "0"
+
+#Note: the below instructions hard-code a static VSN. In the future we will want to generate a random VSN (NXXX where X is a [0-9A-Z]) (TODO)
+- name: Set the node friendly ID (VSN)
+  hosts: root
+  tasks:
+    - name: Hard-code a static VSN
+      shell: echo N001 > /etc/waggle/vsn
+      args:
+        executable: /bin/bash
+
+    - name: Get Node ID #file lookup plugin doesnt work because the file is in the client not in host
+      slurp: #method to get file contents from client (content is in base64)
+        src: /etc/waggle/node-id
+      register: remote_content_encoded
+
+    - name: Decode Remote Content
+      set_fact:
+        Node_ID: "{{remote_content_encoded.content | b64decode}}"
+
+    - name: Output Node ID #Give user their node id
+      debug:
+        msg: "Node ID: {{Node_ID}}"
+
+- name: Register node and establish connection to Beehive
+  hosts: root
+  vars_prompt:
+    - name: Node Registration
+      prompt: Please register your node in https://portal.sagecontinuum.org/my-devices, when you are finish you will receive registration.zip. Place registration.zip in the same location this playbook is sitting in (i.e. node-platforms/nvidia_jetson/). When you are done press enter
+      private: no
+
+  tasks:
+    - name: Copy the Beekeeper known hosts public CA
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/ROOTFS/etc/ssh/ssh_known_hosts"
+        dest: /etc/ssh/ssh_known_hosts
+        mode: 0644
+
+    - name: Create /root/.ssh/authorized_keys if not exists
+      ansible.builtin.file:
+        path: /root/.ssh/authorized_keys
+        state: touch
+        mode: u=rw
+
+    - name: Enable waggle admin reverse tunnel access
+      ansible.builtin.blockinfile:
+        marker: "# <-- {mark} ANSIBLE MANAGED BLOCK - Enable Waggle Admin Reverse Tunnel Access -->"
+        path: /root/.ssh/authorized_keys
+        block: "{{ lookup('ansible.builtin.file', '{{ playbook_dir }}/ROOTFS/root/.ssh/authorized_keys.prod') }}"
+
+    - name: Unzip registration files into the node
+      ansible.builtin.unarchive:
+        src: "{{ playbook_dir }}/registration.zip"
+        dest: /etc/waggle
+        mode: 0600
+
+    - name: Conclusion
+      debug:
+        msg: "The node is now configured for WES. Give the node a couple of minutes to register. After registration, the Beehive should automatically push WES to the node and start running its pods"

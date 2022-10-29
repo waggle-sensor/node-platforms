@@ -1,3 +1,4 @@
+---
 - name: Set up root access
   hosts: waggle
   become: yes
