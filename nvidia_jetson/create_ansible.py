@@ -6,11 +6,9 @@ AGENT = "agent"
 def main(args):
     print(f'Creating Ansible script for {args.type}')
 
-
-    script = """
----
+    script = """---
 - name: Set up root access
-  ansible.builtin.import_playbook: root_access.yaml
+  ansible.builtin.import_playbook: ansible_root_access.yaml
 
 - name: Check Jetpack version
   ansible.builtin.import_playbook: ansible_check_jetpack.yaml
@@ -23,11 +21,14 @@ def main(args):
 """
     else:
         script += """
-- name: Create /media for storage
-  ansible.builtin.file:
-    path: /media
-    state: directory
-    mode: '0755'
+- name: Set up storage
+  hosts: root
+  tasks:
+  - name: Create /media for storage
+    ansible.builtin.file:
+      path: /media
+      state: directory
+      mode: '0755'
 """
     if args.type == CORE:
         script += """

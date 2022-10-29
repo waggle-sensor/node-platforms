@@ -47,6 +47,7 @@
       ansible.builtin.copy:
         src: /etc/waggle/config.ini.agent.tmpl
         dest: /etc/waggle/config.ini
+        remote_src: yes
 
     - name: Configure the lan0 network interface to bind to 10.31.81.1
       ansible.builtin.copy:

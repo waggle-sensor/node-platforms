@@ -23,6 +23,10 @@
       ansible.builtin.apt:
         deb: https://github.com/waggle-sensor/waggle-nodeid/releases/download/v1.0.7/waggle-nodeid_1.0.7_all.deb
 
+    - name: Install waggle-node-hostname #the tool is used for a work around to change the hostname
+      ansible.builtin.apt:
+        deb: https://github.com/waggle-sensor/waggle-node-hostname/releases/download/v1.2.1/waggle-node-hostname_1.2.1_all.deb
+
     - name: Install waggle-commontools to read the config
       ansible.builtin.apt:
         deb: https://github.com/waggle-sensor/waggle-common-tools/releases/download/v1.0.0/waggle-common-tools_1.0.0_all.deb

@@ -14,7 +14,7 @@
         state: stopped
 
     - name: Move docker
-      shell: mv /var/lib/docker /media/plugin-data/
+      shell: mv /var/lib/docker /media/plugin-data/docker
       args:
         executable: /bin/bash
 
