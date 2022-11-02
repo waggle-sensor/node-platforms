@@ -24,9 +24,9 @@ def main(args):
 - name: Set up storage
   hosts: root
   tasks:
-  - name: Create /media for storage
+  - name: Create /media/plugin-data for storage
     ansible.builtin.file:
-      path: /media
+      path: /media/plugin-data
       state: directory
       mode: '0755'
 """
