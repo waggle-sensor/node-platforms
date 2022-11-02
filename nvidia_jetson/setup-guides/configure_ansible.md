@@ -84,6 +84,28 @@ Update the udev rule with obtained MAC address
 sed -i 's/f8:e4:3b:\*/{mac}/g' ROOTFS/etc/udev/rules.d/10-waggle.rules
 ```
 
+### Configure udev rule for Waggle agents
+
+You may attempt to make your Jetson as a worker node to an existing Waggle node. In this case, running the Ansible script will need an extra step to configure before running the script. We will update the udev rule with the MAC address of your Jetson to make it connect to the core of the Waggle node.
+
+To get MAC address,
+```
+ip address show eth0 | grep ether | tr -s ' ' | awk '{ print $2 }'
+```
+
+You will get MAC address of the dongle,
+```
+# You will probably get different MAC address than below as it is dependent on vender of the dongle
+00:04:4b:a7:ce:4a
+```
+
+Update the udev rule with obtained MAC address
+```
+# Replace {mac} with the MAC address you obtained above
+sed -i 's/48:b0:2d:\*/{mac}/g' ROOTFS/etc/udev/rules.d/10-waggle.rules
+```
+
+
 ##### Ansible is all setup!
 
 Continue to [Running The Ansible Playbook](./running_ansible.md)
