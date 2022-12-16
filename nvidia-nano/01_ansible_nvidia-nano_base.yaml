@@ -41,6 +41,25 @@
       loop: "{{ sda_info.partitions }}"
       when: item.fstype is search("linux-swap")
 
+    # - name: Unmount {{ ext_drive_dev }} partitions test
+    #   ansible.posix.mount:
+    #     path: "{{ item.name }}"
+    #     state: unmounted
+    #   with_items:
+    #     - { name: "/tmp/j" }
+    #     - { name: "/media/plugin-data" }
+
+    # TODO: figure out how to unmount the /dev/ with shell unmount command
+    # TODO: then run a fstab to clear out the partitions instead of parted
+    # TODO: try the mount command (mabye) to clear out the fstab file
+
+    # - name: Unmount {{ ext_drive_dev }} partitions
+    #   ansible.posix.mount:
+    #     path: "{{ ext_drive_dev }}{{ item.num }}"
+    #     state: absent
+    #   loop: "{{ sda_info.partitions }}"
+    #   when: item.fstype is not search("linux-swap")
+
     # TODO: figure out how to disable auto-mount which causes this to fail
     - name: Remove all partitions from {{ ext_drive_dev }}
       parted:

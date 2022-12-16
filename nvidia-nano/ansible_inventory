@@ -3,7 +3,7 @@ waggle ansible_user=waggle ansible_become_pass=waggle
 root ansible_user=root
 
 [nano:vars]
-ansible_host={ip}
+ansible_host=10.0.0.163
 ansible_connection=paramiko
 ansible_password=waggle
 ext_drive_dev=/dev/sda
