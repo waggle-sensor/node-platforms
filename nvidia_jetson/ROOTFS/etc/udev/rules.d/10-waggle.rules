@@ -3,6 +3,9 @@
 KERNEL=="eth*", ATTR{address}=="48:b0:2d:*", NAME="wan0"
 
 ## LAN configuration
+# uni ethernet dongle with Realtek chip
+KERNEL=="eth*", ATTR{address}=="00:e0:4c:*", NAME="lan0"
+# uni ethernet dongle with ASIX chip
 KERNEL=="eth*", ATTR{address}=="f8:e4:3b:*", NAME="lan0"
 
 ## WIFI configuration
