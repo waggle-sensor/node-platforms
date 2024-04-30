@@ -93,3 +93,6 @@ This is an organized list of the items that are left to complete for the Nvidia 
 
 1. `dhcpd` is no longer running now that `isc-dhcp-server` is removed.
 
+# TODOs April 29th 2024 with Raj
+- we may not gather facts in the ansible if we are not using those variables
+- in the ansible or somewhere before we run the ansible script, we should provide a validated VSN to the node, along with the registration key.
