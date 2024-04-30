@@ -9,9 +9,6 @@ def main(args):
     script = """---
 - name: Set up root access
   ansible.builtin.import_playbook: ansible_root_access.yaml
-
-- name: Check Jetpack version
-  ansible.builtin.import_playbook: ansible_check_jetpack.yaml
 """
     if args.extra_drive:
         print("Extra drive is enabled")
