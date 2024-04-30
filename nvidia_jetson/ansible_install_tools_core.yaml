@@ -16,7 +16,7 @@
           - dnsmasq
 
     - name: Install K3s via curl
-      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.25.4+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_CLUSTER_SECRET=4tX0DUZ0uQknRtVUAKjt sh -
+      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.25.4+k3s1 INSTALL_K3S_SKIP_ENABLE=true K3S_AGENT_TOKEN=4tX0DUZ0uQknRtVUAKjt sh -
       args:
         executable: /bin/bash
 
